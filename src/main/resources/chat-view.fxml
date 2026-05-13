@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.controller.MessengerController">
+
+    <left>
+        <ListView fx:id="contactsListView" prefWidth="180.0"/>
+    </left>
+
+    <center>
+        <StackPane>
+
+            <VBox spacing="10.0" style="-fx-padding: 10;">
+
+                <HBox fx:id="chatHeaderBox"
+                      alignment="CENTER_LEFT"
+                      spacing="10">
+
+                    <StackPane fx:id="chatAvatar"/>
+
+                    <Label fx:id="chatTitleLabel"
+                           text="Bot"
+                           styleClass="chat-title"
+                           HBox.hgrow="ALWAYS"/>
+
+                    <Button fx:id="menuButton"
+                            text="⋮"
+                            onAction="#onMenuButtonClick"
+                            styleClass="dots-button"/>
+                </HBox>
+
+                <ListView fx:id="messagesListView"
+                          VBox.vgrow="ALWAYS"/>
+
+                <HBox spacing="10.0">
+
+                    <TextField fx:id="messageTextField"
+                               promptText="Enter message"
+                               HBox.hgrow="ALWAYS"/>
+
+                    <Button text="Send"
+                            onAction="#onSendButtonClick"/>
+                </HBox>
+
+            </VBox>
+
+            <VBox fx:id="dropdownMenu"
+                  visible="false"
+                  managed="false"
+                  styleClass="dropdown-menu"
+                  StackPane.alignment="TOP_RIGHT">
+
+                <Button text="Clear chat"
+                        onAction="#onClearChatClick"
+                        styleClass="dropdown-item"/>
+
+            </VBox>
+
+        </StackPane>
+    </center>
+
+</BorderPane>
