@@ -25,6 +25,27 @@ public class MessengerModel {
         chatMessages.put(contactName, FXCollections.observableArrayList());
     }
 
+    public boolean hasContact(String contactName) {
+        return chatMessages.containsKey(contactName);
+    }
+
+    public void renameChat(String oldName, String newName) {
+        int contactIndex = contacts.indexOf(oldName);
+
+        if (contactIndex == -1 || chatMessages.containsKey(newName)) {
+            return;
+        }
+
+        ObservableList<Message> messages = chatMessages.remove(oldName);
+        chatMessages.put(newName, messages);
+        contacts.set(contactIndex, newName);
+    }
+
+    public void deleteChat(String contactName) {
+        contacts.remove(contactName);
+        chatMessages.remove(contactName);
+    }
+
     public void clearChat(String contactName) {
         chatMessages.get(contactName).clear();
     }

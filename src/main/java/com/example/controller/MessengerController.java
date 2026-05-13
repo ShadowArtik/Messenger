@@ -3,22 +3,22 @@ package com.example.controller;
 import com.example.model.Message;
 import com.example.model.MessengerModel;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
-import javafx.scene.shape.Circle;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.scene.paint.Color;
 import javafx.scene.control.Button;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
+
+import java.util.Optional;
 
 public class MessengerController {
 
@@ -39,6 +39,9 @@ public class MessengerController {
 
     @FXML
     private Button menuButton;
+
+    @FXML
+    private VBox dropdownMenu;
 
     private MessengerModel model;
 
@@ -113,6 +116,7 @@ public class MessengerController {
                         selectedContact = newValue;
                         updateChatHeader(selectedContact);
                         messagesListView.setItems(model.getMessagesForContact(selectedContact));
+                        hideDropdownMenu();
                     }
                 }
         );
@@ -137,22 +141,14 @@ public class MessengerController {
 
                 HBox messageBox = new HBox(messageLabel);
 
+                messageLabel.getStyleClass().add("message-bubble");
+
                 if (message.getSender().equals("You")) {
                     messageBox.setAlignment(Pos.CENTER_RIGHT);
-                    messageLabel.setStyle(
-                            "-fx-background-color: #5B9DFF;" +
-                                    "-fx-text-fill: white;" +
-                                    "-fx-padding: 10;" +
-                                    "-fx-background-radius: 16;"
-                    );
+                    messageLabel.getStyleClass().add("message-bubble-outgoing");
                 } else {
                     messageBox.setAlignment(Pos.CENTER_LEFT);
-                    messageLabel.setStyle(
-                            "-fx-background-color: #3A3D41;" +
-                                    "-fx-text-fill: #F1F1F1;" +
-                                    "-fx-padding: 12 14 12 14;" +
-                                    "-fx-background-radius: 18;"
-                    );
+                    messageLabel.getStyleClass().add("message-bubble-incoming");
                 }
 
                 setText(null);
@@ -205,19 +201,93 @@ public class MessengerController {
 
     @FXML
     private void onMenuButtonClick() {
-        ContextMenu menu = new ContextMenu();
-
-        MenuItem clearChatItem = new MenuItem("Clear chat");
-        clearChatItem.setOnAction(event -> model.clearChat(selectedContact));
-
-        menu.getItems().add(clearChatItem);
-
-        menu.show(menuButton, javafx.geometry.Side.BOTTOM, 0, 5);
+        boolean showMenu = !dropdownMenu.isVisible();
+        dropdownMenu.setVisible(showMenu);
+        dropdownMenu.setManaged(showMenu);
     }
 
     @FXML
     private void onClearChatClick() {
         model.clearChat(selectedContact);
+        hideDropdownMenu();
+    }
+
+    @FXML
+    private void onRenameChatClick() {
+        hideDropdownMenu();
+
+        TextInputDialog dialog = new TextInputDialog(selectedContact);
+        dialog.setTitle("Rename chat");
+        dialog.setHeaderText(null);
+        dialog.setContentText("New chat name:");
+
+        Optional<String> result = dialog.showAndWait();
+
+        if (result.isEmpty()) {
+            return;
+        }
+
+        String newName = result.get().trim();
+
+        if (newName.isEmpty() || newName.equals(selectedContact)) {
+            return;
+        }
+
+        if (model.hasContact(newName)) {
+            showMessage("Chat already exists", "A chat with this name already exists.");
+            return;
+        }
+
+        String oldName = selectedContact;
+        model.renameChat(oldName, newName);
+        selectedContact = newName;
+        updateChatHeader(selectedContact);
+        contactsListView.getSelectionModel().select(selectedContact);
+        messagesListView.setItems(model.getMessagesForContact(selectedContact));
+    }
+
+    @FXML
+    private void onDeleteChatClick() {
+        hideDropdownMenu();
+
+        if (model.getContacts().size() <= 1) {
+            showMessage("Cannot delete chat", "You cannot delete the last chat.");
+            return;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete chat");
+        alert.setHeaderText(null);
+        alert.setContentText("Delete chat with " + selectedContact + "?");
+
+        Optional<ButtonType> result = alert.showAndWait();
+
+        if (result.isEmpty() || result.get() != ButtonType.OK) {
+            return;
+        }
+
+        int oldIndex = contactsListView.getSelectionModel().getSelectedIndex();
+        oldIndex = Math.max(oldIndex, 0);
+        model.deleteChat(selectedContact);
+
+        int newIndex = Math.min(oldIndex, model.getContacts().size() - 1);
+        selectedContact = model.getContacts().get(newIndex);
+        contactsListView.getSelectionModel().select(selectedContact);
+        updateChatHeader(selectedContact);
+        messagesListView.setItems(model.getMessagesForContact(selectedContact));
+    }
+
+    private void showMessage(String title, String text) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(text);
+        alert.showAndWait();
+    }
+
+    private void hideDropdownMenu() {
+        dropdownMenu.setVisible(false);
+        dropdownMenu.setManaged(false);
     }
 
     @FXML
