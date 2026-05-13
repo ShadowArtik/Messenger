@@ -7,12 +7,18 @@ public class Message {
 
     private final String sender;
     private final String text;
-    private final LocalTime time;
+    private final String time;
 
     public Message(String sender, String text) {
         this.sender = sender;
         this.text = text;
-        this.time = LocalTime.now();
+        this.time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    public Message(String sender, String text, String time) {
+        this.sender = sender;
+        this.text = text;
+        this.time = time;
     }
 
     public String getSender() {
@@ -23,12 +29,8 @@ public class Message {
         return text;
     }
 
-    public LocalTime getTime() {
-        return time;
-    }
-
     public String getFormattedTime() {
-        return time.format(DateTimeFormatter.ofPattern("HH:mm"));
+        return time;
     }
 
     @Override
