@@ -105,10 +105,15 @@ public class MessengerController {
             }
         });
 
-        selectedContact = "Bot";
-        updateChatHeader(selectedContact);
-        contactsListView.getSelectionModel().select(selectedContact);
-        messagesListView.setItems(model.getMessagesForContact(selectedContact));
+        if (!model.getContacts().isEmpty()) {
+            selectedContact = model.getContacts().get(0);
+
+            updateChatHeader(selectedContact);
+
+            contactsListView.getSelectionModel().select(selectedContact);
+
+            messagesListView.setItems(model.getMessagesForContact(selectedContact));
+        }
 
         contactsListView.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> {
@@ -272,6 +277,40 @@ public class MessengerController {
 
         int newIndex = Math.min(oldIndex, model.getContacts().size() - 1);
         selectedContact = model.getContacts().get(newIndex);
+        contactsListView.getSelectionModel().select(selectedContact);
+        updateChatHeader(selectedContact);
+        messagesListView.setItems(model.getMessagesForContact(selectedContact));
+    }
+
+    @FXML
+    private void onCreateChatClick() {
+        hideDropdownMenu();
+
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Create chat");
+        dialog.setHeaderText(null);
+        dialog.setContentText("Chat name:");
+
+        Optional<String> result = dialog.showAndWait();
+
+        if (result.isEmpty()) {
+            return;
+        }
+
+        String newName = result.get().trim();
+
+        if (newName.isEmpty()) {
+            return;
+        }
+
+        if (model.hasContact(newName)) {
+            showMessage("Chat already exists", "A chat with this name already exists.");
+            return;
+        }
+
+        model.addContact(newName);
+
+        selectedContact = newName;
         contactsListView.getSelectionModel().select(selectedContact);
         updateChatHeader(selectedContact);
         messagesListView.setItems(model.getMessagesForContact(selectedContact));

@@ -54,6 +54,10 @@
                   styleClass="dropdown-menu"
                   StackPane.alignment="TOP_LEFT">
 
+                <Button text="Create chat"
+                        onAction="#onCreateChatClick"
+                        styleClass="dropdown-item"/>
+
                 <Button text="Clear chat"
                         onAction="#onClearChatClick"
                         styleClass="dropdown-item"/>
