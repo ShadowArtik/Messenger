@@ -5,6 +5,8 @@
     -fx-faint-focus-color: transparent;
 }
 
+/* LISTS */
+
 .list-view {
     -fx-background-color: #2B2D31;
     -fx-background-insets: 0;
@@ -36,12 +38,28 @@
     -fx-font-weight: bold;
 }
 
+/* MESSAGES LIST */
+
+.messages-list .list-cell,
+.messages-list .list-cell:hover,
+.messages-list .list-cell:selected,
+.messages-list .list-cell:selected:hover,
+.messages-list .list-cell:filled:selected,
+.messages-list .list-cell:filled:selected:hover {
+    -fx-background-color: transparent;
+    -fx-font-weight: normal;
+}
+
+/* HEADER */
+
 .chat-title {
     -fx-text-fill: white;
     -fx-font-size: 18px;
     -fx-font-weight: bold;
     -fx-padding: 8 0 8 4;
 }
+
+/* INPUT */
 
 .text-field {
     -fx-background-color: #383A40;
@@ -60,6 +78,8 @@
     -fx-border-color: #5B9DFF;
     -fx-border-width: 1.5;
 }
+
+/* BUTTONS */
 
 .button {
     -fx-background-color: #5B9DFF;
@@ -83,6 +103,8 @@
     -fx-background-color: #4C8EF0;
 }
 
+/* THREE DOTS BUTTON */
+
 .dots-button {
     -fx-background-color: transparent;
     -fx-background-insets: 0;
@@ -103,6 +125,8 @@
 .dots-button:hover {
     -fx-background-color: #34373C;
 }
+
+/* DROPDOWN */
 
 .dropdown-menu {
     -fx-background-color: transparent;
@@ -137,6 +161,33 @@
     -fx-background-color: #242830;
 }
 
+/* MESSAGE BUBBLES */
+
+.message-bubble {
+    -fx-padding: 10 14;
+    -fx-background-radius: 18;
+}
+
+.message-bubble-outgoing {
+    -fx-background-color: #5B9DFF;
+}
+
+.message-bubble-incoming {
+    -fx-background-color: #3A3D41;
+}
+
+.message-text {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+}
+
+.message-time {
+    -fx-text-fill: rgba(255, 255, 255, 0.65);
+    -fx-font-size: 11px;
+}
+
+/* SCROLL BAR */
+
 .scroll-bar:vertical,
 .scroll-bar:horizontal {
     -fx-background-color: transparent;
@@ -150,21 +201,4 @@
     -fx-background-color: #4A4D52;
     -fx-background-insets: 0;
     -fx-background-radius: 10;
-}
-
-.message-bubble {
-    -fx-padding: 10 14 10 14;
-    -fx-background-radius: 18;
-    -fx-font-size: 13px;
-    -fx-line-spacing: 2px;
-}
-
-.message-bubble-outgoing {
-    -fx-background-color: #5B9DFF;
-    -fx-text-fill: white;
-}
-
-.message-bubble-incoming {
-    -fx-background-color: #3A3D41;
-    -fx-text-fill: #F1F1F1;
 }

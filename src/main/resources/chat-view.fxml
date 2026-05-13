@@ -34,6 +34,7 @@
                 </HBox>
 
                 <ListView fx:id="messagesListView"
+                          styleClass="messages-list"
                           VBox.vgrow="ALWAYS"/>
 
                 <HBox spacing="10.0">

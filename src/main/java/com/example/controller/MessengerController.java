@@ -137,23 +137,25 @@ public class MessengerController {
                     return;
                 }
 
-                Label messageLabel = new Label(
-                        message.getText() + "\n" + message.getFormattedTime()
-                );
+                Label textLabel = new Label(message.getText());
+                textLabel.setWrapText(true);
+                textLabel.setMaxWidth(300);
+                textLabel.getStyleClass().add("message-text");
 
-                messageLabel.setWrapText(true);
-                messageLabel.setMaxWidth(300);
+                Label timeLabel = new Label(message.getFormattedTime());
+                timeLabel.getStyleClass().add("message-time");
 
-                HBox messageBox = new HBox(messageLabel);
+                VBox bubble = new VBox(3, textLabel, timeLabel);
+                bubble.getStyleClass().add("message-bubble");
 
-                messageLabel.getStyleClass().add("message-bubble");
+                HBox messageBox = new HBox(bubble);
 
                 if (message.getSender().equals("You")) {
                     messageBox.setAlignment(Pos.CENTER_RIGHT);
-                    messageLabel.getStyleClass().add("message-bubble-outgoing");
+                    bubble.getStyleClass().add("message-bubble-outgoing");
                 } else {
                     messageBox.setAlignment(Pos.CENTER_LEFT);
-                    messageLabel.getStyleClass().add("message-bubble-incoming");
+                    bubble.getStyleClass().add("message-bubble-incoming");
                 }
 
                 setText(null);
