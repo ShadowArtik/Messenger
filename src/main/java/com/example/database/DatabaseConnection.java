@@ -23,21 +23,32 @@ public class DatabaseConnection {
     }
 
     public static void initDatabase() {
-        String sql = """
-        CREATE TABLE IF NOT EXISTS messages (
-            id SERIAL PRIMARY KEY,
-            contact_name VARCHAR(100) NOT NULL,
-            sender VARCHAR(50) NOT NULL,
-            text TEXT NOT NULL,
-            message_time VARCHAR(10) NOT NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        """;
+        String contactsSql = """
+                CREATE TABLE IF NOT EXISTS contacts (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL UNIQUE,
+                    contact_type VARCHAR(20) NOT NULL DEFAULT 'USER'
+                );
+                """;
+
+        String messagesSql = """
+                CREATE TABLE IF NOT EXISTS messages (
+                    id SERIAL PRIMARY KEY,
+                    contact_name VARCHAR(100) NOT NULL,
+                    sender VARCHAR(50) NOT NULL,
+                    text TEXT NOT NULL,
+                    message_time VARCHAR(10) NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                """;
 
         try (Connection connection = getConnection();
              Statement statement = connection.createStatement()) {
 
-            statement.execute(sql);
+            statement.execute(contactsSql);
+            statement.execute(messagesSql);
+
+            System.out.println("Table contacts is ready");
             System.out.println("Table messages is ready");
 
         } catch (SQLException e) {

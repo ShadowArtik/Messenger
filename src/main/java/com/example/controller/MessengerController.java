@@ -3,48 +3,26 @@ package com.example.controller;
 import com.example.model.Message;
 import com.example.model.MessengerModel;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
 import javafx.geometry.Pos;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.shape.Circle;
 import javafx.scene.paint.Color;
-import javafx.scene.control.Button;
+import javafx.scene.shape.Circle;
 
 import java.util.Optional;
 
 public class MessengerController {
 
-    @FXML
-    private ListView<String> contactsListView;
-
-    @FXML
-    private ListView<Message> messagesListView;
-
-    @FXML
-    private Label chatTitleLabel;
-
-    @FXML
-    private StackPane chatAvatar;
-
-    @FXML
-    private TextField messageTextField;
-
-    @FXML
-    private Button menuButton;
-
-    @FXML
-    private VBox dropdownMenu;
+    @FXML private ListView<String> contactsListView;
+    @FXML private ListView<Message> messagesListView;
+    @FXML private Label chatTitleLabel;
+    @FXML private StackPane chatAvatar;
+    @FXML private TextField messageTextField;
+    @FXML private VBox dropdownMenu;
 
     private MessengerModel model;
-
     private String selectedContact;
 
     @FXML
@@ -52,8 +30,7 @@ public class MessengerController {
         model = new MessengerModel();
 
         contactsListView.setItems(model.getContacts());
-
-        contactsListView.setCellFactory(listView -> new ListCell<String>() {
+        contactsListView.setCellFactory(listView -> new ListCell<>() {
             @Override
             protected void updateItem(String name, boolean empty) {
                 super.updateItem(name, empty);
@@ -64,69 +41,28 @@ public class MessengerController {
                     return;
                 }
 
-                Circle avatarCircle = new Circle(18);
-                Color avatarColor;
-
-                switch (name) {
-                    case "Anna":
-                        avatarColor = Color.web("#FF6B81");
-                        break;
-
-                    case "Victor":
-                        avatarColor = Color.web("#7D5FFF");
-                        break;
-
-                    case "Bot":
-                        avatarColor = Color.web("#2ED573");
-                        break;
-
-                    default:
-                        avatarColor = Color.web("#5B9DFF");
-                }
-
-                avatarCircle.setFill(avatarColor);
-
-                Label letterLabel = new Label(name.substring(0, 1).toUpperCase());
-                letterLabel.setStyle(
-                        "-fx-text-fill: white;" +
-                                "-fx-font-weight: bold;"
-                );
-
-                StackPane avatar = new StackPane(avatarCircle, letterLabel);
+                StackPane avatar = createAvatar(name, 18);
 
                 Label nameLabel = new Label(name);
-                nameLabel.setStyle("-fx-text-fill: white;");
+                nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
 
-                HBox container = new HBox(10, avatar, nameLabel);
+                HBox nameBox = new HBox(6, nameLabel);
+                nameBox.setAlignment(Pos.CENTER_LEFT);
+
+                if (model.isBotContact(name)) {
+                    Label botBadge = createBotBadge();
+                    nameBox.getChildren().add(botBadge);
+                }
+
+                HBox container = new HBox(10, avatar, nameBox);
                 container.setAlignment(Pos.CENTER_LEFT);
 
-                setGraphic(container);
                 setText(null);
+                setGraphic(container);
             }
         });
 
-        if (!model.getContacts().isEmpty()) {
-            selectedContact = model.getContacts().get(0);
-
-            updateChatHeader(selectedContact);
-
-            contactsListView.getSelectionModel().select(selectedContact);
-
-            messagesListView.setItems(model.getMessagesForContact(selectedContact));
-        }
-
-        contactsListView.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> {
-                    if (newValue != null) {
-                        selectedContact = newValue;
-                        updateChatHeader(selectedContact);
-                        messagesListView.setItems(model.getMessagesForContact(selectedContact));
-                        hideDropdownMenu();
-                    }
-                }
-        );
-
-        messagesListView.setCellFactory(listView -> new ListCell<Message>() {
+        messagesListView.setCellFactory(listView -> new ListCell<>() {
             @Override
             protected void updateItem(Message message, boolean empty) {
                 super.updateItem(message, empty);
@@ -163,47 +99,83 @@ public class MessengerController {
             }
         });
 
+        if (!model.getContacts().isEmpty()) {
+            selectedContact = model.getContacts().get(0);
+            contactsListView.getSelectionModel().select(selectedContact);
+            openChat(selectedContact);
+        }
+
+        contactsListView.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                    if (newValue != null) {
+                        selectedContact = newValue;
+                        openChat(selectedContact);
+                        hideDropdownMenu();
+                    }
+                }
+        );
+
         messageTextField.setOnAction(event -> onSendButtonClick());
     }
 
+    private void openChat(String contactName) {
+        updateChatHeader(contactName);
+        messagesListView.setItems(model.getMessagesForContact(contactName));
+    }
+
     private void updateChatHeader(String name) {
-
         chatTitleLabel.setText(name);
+        chatTitleLabel.setGraphic(null);
 
-        chatAvatar.getChildren().clear();
+        if (model.isBotContact(name)) {
+            Label titleLabel = new Label(name);
+            titleLabel.setStyle(
+                    "-fx-text-fill: white;" +
+                            "-fx-font-size: 24;" +
+                            "-fx-font-weight: bold;"
+            );
 
-        Color avatarColor;
+            HBox titleBox = new HBox(6, titleLabel, createBotBadge());
+            titleBox.setAlignment(Pos.CENTER_LEFT);
 
-        switch (name) {
-            case "Anna":
-                avatarColor = Color.web("#FF6B81");
-                break;
-
-            case "Victor":
-                avatarColor = Color.web("#7D5FFF");
-                break;
-
-            case "Bot":
-                avatarColor = Color.web("#2ED573");
-                break;
-
-            default:
-                avatarColor = Color.web("#5B9DFF");
+            chatTitleLabel.setText("");
+            chatTitleLabel.setGraphic(titleBox);
         }
 
-        Circle circle = new Circle(18);
-        circle.setFill(avatarColor);
+        chatAvatar.getChildren().clear();
+        chatAvatar.getChildren().add(createAvatar(name, 18));
+    }
+
+    private StackPane createAvatar(String name, double radius) {
+        Circle circle = new Circle(radius);
+        circle.setFill(Color.web(getAvatarColor(name)));
 
         Label letter = new Label(name.substring(0, 1).toUpperCase());
+        letter.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
 
-        letter.setStyle(
-                "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;"
-        );
+        return new StackPane(circle, letter);
+    }
 
-        StackPane avatar = new StackPane(circle, letter);
+    private String getAvatarColor(String name) {
+        String[] colors = {
+                "#5B9DFF",
+                "#FF6B81",
+                "#7D5FFF",
+                "#2ED573",
+                "#FFA502",
+                "#FF4757",
+                "#1DD1A1",
+                "#A55EEA"
+        };
 
-        chatAvatar.getChildren().add(avatar);
+        int index = Math.abs(name.hashCode()) % colors.length;
+        return colors[index];
+    }
+
+    private Label createBotBadge() {
+        Label botBadge = new Label("BOT");
+        botBadge.getStyleClass().add("bot-badge");
+        return botBadge;
     }
 
     @FXML
@@ -245,12 +217,12 @@ public class MessengerController {
             return;
         }
 
-        String oldName = selectedContact;
-        model.renameChat(oldName, newName);
+        model.renameChat(selectedContact, newName);
         selectedContact = newName;
-        updateChatHeader(selectedContact);
+
         contactsListView.getSelectionModel().select(selectedContact);
-        messagesListView.setItems(model.getMessagesForContact(selectedContact));
+        openChat(selectedContact);
+        contactsListView.refresh();
     }
 
     @FXML
@@ -275,13 +247,14 @@ public class MessengerController {
 
         int oldIndex = contactsListView.getSelectionModel().getSelectedIndex();
         oldIndex = Math.max(oldIndex, 0);
+
         model.deleteChat(selectedContact);
 
         int newIndex = Math.min(oldIndex, model.getContacts().size() - 1);
         selectedContact = model.getContacts().get(newIndex);
+
         contactsListView.getSelectionModel().select(selectedContact);
-        updateChatHeader(selectedContact);
-        messagesListView.setItems(model.getMessagesForContact(selectedContact));
+        openChat(selectedContact);
     }
 
     @FXML
@@ -314,21 +287,7 @@ public class MessengerController {
 
         selectedContact = newName;
         contactsListView.getSelectionModel().select(selectedContact);
-        updateChatHeader(selectedContact);
-        messagesListView.setItems(model.getMessagesForContact(selectedContact));
-    }
-
-    private void showMessage(String title, String text) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(text);
-        alert.showAndWait();
-    }
-
-    private void hideDropdownMenu() {
-        dropdownMenu.setVisible(false);
-        dropdownMenu.setManaged(false);
+        openChat(selectedContact);
     }
 
     @FXML
@@ -343,13 +302,25 @@ public class MessengerController {
         Message userMessage = new Message("You", text);
         model.addMessage(selectedContact, userMessage);
 
-        if (selectedContact.equals("Bot")) {
+        if (model.isBotContact(selectedContact)) {
             Message botMessage = model.generateBotResponse(text);
             model.addMessage(selectedContact, botMessage);
         }
 
         messageTextField.clear();
-
         messagesListView.scrollTo(model.getMessagesForContact(selectedContact).size() - 1);
+    }
+
+    private void showMessage(String title, String text) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(text);
+        alert.showAndWait();
+    }
+
+    private void hideDropdownMenu() {
+        dropdownMenu.setVisible(false);
+        dropdownMenu.setManaged(false);
     }
 }
