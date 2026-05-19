@@ -1,46 +1,39 @@
 package com.example.model;
 
+import com.example.service.MessageService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+
 import java.util.HashMap;
 import java.util.Map;
-import com.example.storage.ChatStorage;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MessengerModel {
 
     private final ObservableList<String> contacts;
     private final Map<String, ObservableList<Message>> chatMessages;
+    private final MessageService messageService;
 
     public MessengerModel() {
-
         contacts = FXCollections.observableArrayList();
         chatMessages = new HashMap<>();
+        messageService = new MessageService();
 
-        Map<String, List<Message>> savedChats = ChatStorage.loadChats();
-
-        if (savedChats.isEmpty()) {
-
-            addContact("Anna");
-            addContact("Victor");
-            addContact("Bot");
-
-        } else {
-
-            for (String contact : savedChats.keySet()) {
-
-                addContact(contact);
-
-                chatMessages.get(contact).setAll(savedChats.get(contact));
-            }
-        }
+        addContact("Anna");
+        addContact("Victor");
+        addContact("Bot");
     }
 
     public void addContact(String contactName) {
+        if (chatMessages.containsKey(contactName)) {
+            return;
+        }
+
         contacts.add(contactName);
-        chatMessages.put(contactName, FXCollections.observableArrayList());
-        saveChats();
+
+        ObservableList<Message> messages =
+                FXCollections.observableArrayList(messageService.getMessages(contactName));
+
+        chatMessages.put(contactName, messages);
     }
 
     public boolean hasContact(String contactName) {
@@ -58,28 +51,19 @@ public class MessengerModel {
         chatMessages.put(newName, messages);
         contacts.set(contactIndex, newName);
 
-        saveChats();
+        // Пока переименование меняет только UI.
+        // Позже можно добавить update contact_name в базе.
     }
 
     public void deleteChat(String contactName) {
         contacts.remove(contactName);
         chatMessages.remove(contactName);
-        saveChats();
+        messageService.clearChat(contactName);
     }
 
     public void clearChat(String contactName) {
         chatMessages.get(contactName).clear();
-        saveChats();
-    }
-
-    public void saveChats() {
-        Map<String, List<Message>> data = new HashMap<>();
-
-        for (String contact : contacts) {
-            data.put(contact, new ArrayList<>(chatMessages.get(contact)));
-        }
-
-        ChatStorage.saveChats(data);
+        messageService.clearChat(contactName);
     }
 
     public ObservableList<String> getContacts() {
@@ -92,7 +76,7 @@ public class MessengerModel {
 
     public void addMessage(String contactName, Message message) {
         chatMessages.get(contactName).add(message);
-        saveChats();
+        messageService.saveMessage(contactName, message);
     }
 
     public Message generateBotResponse(String userText) {
@@ -108,6 +92,4 @@ public class MessengerModel {
 
         return new Message("Bot", response);
     }
-
-
 }

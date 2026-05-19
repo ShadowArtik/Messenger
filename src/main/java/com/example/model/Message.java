@@ -1,6 +1,7 @@
 package com.example.model;
 
-import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class Message {
@@ -12,7 +13,10 @@ public class Message {
     public Message(String sender, String text) {
         this.sender = sender;
         this.text = text;
-        this.time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+
+        this.time = ZonedDateTime
+                .now(ZoneId.of("Europe/Kyiv"))
+                .format(DateTimeFormatter.ofPattern("HH:mm"));
     }
 
     public Message(String sender, String text, String time) {
