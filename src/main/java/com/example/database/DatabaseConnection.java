@@ -23,6 +23,16 @@ public class DatabaseConnection {
     }
 
     public static void initDatabase() {
+
+        String usersSql = """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(100) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """;
+
         String contactsSql = """
                 CREATE TABLE IF NOT EXISTS contacts (
                     id SERIAL PRIMARY KEY,
@@ -45,9 +55,11 @@ public class DatabaseConnection {
         try (Connection connection = getConnection();
              Statement statement = connection.createStatement()) {
 
+            statement.execute(usersSql);
             statement.execute(contactsSql);
             statement.execute(messagesSql);
 
+            System.out.println("Table users is ready");
             System.out.println("Table contacts is ready");
             System.out.println("Table messages is ready");
 

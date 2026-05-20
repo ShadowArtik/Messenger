@@ -10,6 +10,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import com.example.model.Session;
 
 import java.util.Optional;
 
@@ -86,7 +87,9 @@ public class MessengerController {
 
                 HBox messageBox = new HBox(bubble);
 
-                if (message.getSender().equals("You")) {
+                if (message.getSender().equals(
+                        Session.getCurrentUser().getUsername()
+                )) {
                     messageBox.setAlignment(Pos.CENTER_RIGHT);
                     bubble.getStyleClass().add("message-bubble-outgoing");
                 } else {
@@ -299,7 +302,10 @@ public class MessengerController {
             return;
         }
 
-        Message userMessage = new Message("You", text);
+        Message userMessage = new Message(
+                Session.getCurrentUser().getUsername(),
+                text
+        );
         model.addMessage(selectedContact, userMessage);
 
         if (model.isBotContact(selectedContact)) {

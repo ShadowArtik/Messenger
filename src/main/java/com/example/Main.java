@@ -13,7 +13,7 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         FXMLLoader fxmlLoader = new FXMLLoader(
-                getClass().getResource("/chat-view.fxml")
+                getClass().getResource("/Login.fxml")
         );
 
         Scene scene = new Scene(fxmlLoader.load(), 800, 500);
