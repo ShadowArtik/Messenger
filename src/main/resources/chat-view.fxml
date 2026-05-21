@@ -8,7 +8,21 @@
             fx:controller="com.example.controller.MessengerController">
 
     <left>
-        <ListView fx:id="contactsListView" prefWidth="180.0"/>
+        <VBox prefWidth="180" styleClass="sidebar">
+
+            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="sidebar-header">
+                <Label text="Chats" styleClass="sidebar-title"/>
+
+                <Pane HBox.hgrow="ALWAYS"/>
+
+                <Button text="+"
+                        onAction="#onCreateChatClick"
+                        styleClass="add-chat-button"/>
+            </HBox>
+
+            <ListView fx:id="contactsListView" VBox.vgrow="ALWAYS"/>
+
+        </VBox>
     </left>
 
     <center>
@@ -54,10 +68,6 @@
                   managed="false"
                   styleClass="dropdown-menu"
                   StackPane.alignment="TOP_LEFT">
-
-                <Button text="Create chat"
-                        onAction="#onCreateChatClick"
-                        styleClass="dropdown-item"/>
 
                 <Button text="Clear chat"
                         onAction="#onClearChatClick"

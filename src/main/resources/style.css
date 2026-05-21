@@ -52,6 +52,16 @@
 
 /* HEADER */
 
+.sidebar-header {
+    -fx-padding: 12 14 8 14;
+}
+
+.sidebar-title {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
 .chat-title {
     -fx-text-fill: white;
     -fx-font-size: 18px;
@@ -101,6 +111,23 @@
 
 .button:pressed {
     -fx-background-color: #4C8EF0;
+}
+
+.add-chat-button {
+    -fx-background-color: #5865F2;
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 999;
+    -fx-min-width: 34px;
+    -fx-min-height: 34px;
+    -fx-max-width: 34px;
+    -fx-max-height: 34px;
+    -fx-padding: -3 0 0 0;
+}
+
+.add-chat-button:hover {
+    -fx-background-color: #6A75FF;
 }
 
 /* THREE DOTS BUTTON */
@@ -233,3 +260,4 @@
 .dialog-pane .button:hover {
     -fx-background-color: #6A75FF;
 }
+

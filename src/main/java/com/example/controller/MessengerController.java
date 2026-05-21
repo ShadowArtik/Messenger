@@ -2,6 +2,8 @@ package com.example.controller;
 
 import com.example.model.Message;
 import com.example.model.MessengerModel;
+import com.example.service.result.CreateChatResponse;
+import com.example.service.result.CreateChatResult;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -282,19 +284,35 @@ public class MessengerController {
             return;
         }
 
-        Chat createdChat = model.addChat(username);
+        CreateChatResponse response = model.addChat(username);
 
-        if (createdChat == null) {
-            showMessage(
-                    "Error",
-                    "User not found, chat already exists, or you entered your own username."
+        switch (response.getResult()) {
+            case SUCCESS -> {
+                selectedChat = response.getChat();
+                contactsListView.getSelectionModel().select(selectedChat);
+                openChat(selectedChat);
+            }
+
+            case USER_NOT_FOUND -> showMessage(
+                    "User not found",
+                    "No user with this username was found."
             );
-            return;
-        }
 
-        selectedChat = createdChat;
-        contactsListView.getSelectionModel().select(selectedChat);
-        openChat(selectedChat);
+            case SELF_CHAT -> showMessage(
+                    "Invalid chat",
+                    "You cannot create a chat with yourself."
+            );
+
+            case CHAT_ALREADY_EXISTS -> showMessage(
+                    "Chat already exists",
+                    "You already have a chat with this user."
+            );
+
+            case DATABASE_ERROR -> showMessage(
+                    "Database error",
+                    "Could not create chat. Please try again."
+            );
+        }
     }
 
     @FXML

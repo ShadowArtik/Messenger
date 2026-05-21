@@ -3,8 +3,11 @@ package com.example.model;
 import com.example.service.ChatService;
 import com.example.service.MessageService;
 import com.example.service.UserService;
+import com.example.service.result.CreateChatResponse;
+import com.example.service.result.CreateChatResult;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+
 
 
 import java.util.HashMap;
@@ -71,21 +74,34 @@ public class MessengerModel {
         chatMessages.put(chat.getId(), messages);
     }
 
-    public Chat addChat(String username) {
+    public CreateChatResponse addChat(String username) {
+
         User targetUser = userService.findByUsername(username);
 
         if (targetUser == null) {
-            return null;
+            return new CreateChatResponse(
+                    CreateChatResult.USER_NOT_FOUND,
+                    null
+            );
         }
 
         if (targetUser.getId() == Session.getCurrentUser().getId()) {
-            return null;
+            return new CreateChatResponse(
+                    CreateChatResult.SELF_CHAT,
+                    null
+            );
         }
 
         for (Chat existingChat : chats) {
             if (existingChat.getName()
-                    .equalsIgnoreCase(targetUser.getDisplayName())) {
-                return null;
+                    .equalsIgnoreCase(
+                            targetUser.getDisplayName()
+                    )) {
+
+                return new CreateChatResponse(
+                        CreateChatResult.CHAT_ALREADY_EXISTS,
+                        null
+                );
             }
         }
 
@@ -95,11 +111,19 @@ public class MessengerModel {
                 targetUser.getId()
         );
 
-        if (chat != null) {
-            addChatToMemory(chat);
+        if (chat == null) {
+            return new CreateChatResponse(
+                    CreateChatResult.DATABASE_ERROR,
+                    null
+            );
         }
 
-        return chat;
+        addChatToMemory(chat);
+
+        return new CreateChatResponse(
+                CreateChatResult.SUCCESS,
+                chat
+        );
     }
 
     public boolean isBotChat(Chat chat) {
