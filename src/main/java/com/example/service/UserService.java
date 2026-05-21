@@ -2,6 +2,7 @@ package com.example.service;
 
 import com.example.model.User;
 import com.example.repository.UserRepository;
+import com.example.util.PasswordHasher;
 
 public class UserService {
 
@@ -25,10 +26,12 @@ public class UserService {
             return false;
         }
 
+        String hashedPassword = PasswordHasher.hashPassword(password);
+
         userRepository.createUser(
                 username,
                 displayName,
-                password
+                hashedPassword
         );
 
         currentUser = userRepository.findByUsername(username);
@@ -43,7 +46,7 @@ public class UserService {
             return false;
         }
 
-        if (!savedPassword.equals(password)) {
+        if (!PasswordHasher.checkPassword(password, savedPassword)) {
             return false;
         }
 

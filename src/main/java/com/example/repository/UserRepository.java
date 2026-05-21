@@ -2,6 +2,7 @@ package com.example.repository;
 
 import com.example.database.DatabaseConnection;
 import com.example.model.User;
+import com.example.util.PasswordHasher;
 
 import java.sql.*;
 
@@ -88,7 +89,11 @@ public class UserRepository {
             return existingUser;
         }
 
-        createUser(username, displayName, "system");
+        createUser(
+                username,
+                displayName,
+                PasswordHasher.hashPassword("system")
+        );
 
         return findByUsername(username);
     }
