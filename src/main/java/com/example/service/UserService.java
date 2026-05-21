@@ -8,8 +8,12 @@ public class UserService {
     private final UserRepository userRepository = new UserRepository();
     private User currentUser;
 
-    public boolean register(String username, String password) {
+    public boolean register(String username, String displayName, String password) {
         if (username == null || username.isBlank()) {
+            return false;
+        }
+
+        if (displayName == null || displayName.isBlank()) {
             return false;
         }
 
@@ -21,7 +25,12 @@ public class UserService {
             return false;
         }
 
-        userRepository.createUser(username, password);
+        userRepository.createUser(
+                username,
+                displayName,
+                password
+        );
+
         currentUser = userRepository.findByUsername(username);
 
         return true;
@@ -44,5 +53,13 @@ public class UserService {
 
     public User getCurrentUser() {
         return currentUser;
+    }
+
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    public User createSystemUserIfNotExists(String username, String displayName) {
+        return userRepository.createSystemUserIfNotExists(username, displayName);
     }
 }

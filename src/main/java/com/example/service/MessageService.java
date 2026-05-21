@@ -7,17 +7,26 @@ import java.util.List;
 
 public class MessageService {
 
-    private final MessageRepository messageRepository = new MessageRepository();
+    private final MessageRepository messageRepository =
+            new MessageRepository();
 
-    public void saveMessage(String contactName, Message message) {
-        messageRepository.saveMessage(contactName, message);
+    public void saveMessage(
+            int chatId,
+            int senderId,
+            Message message
+    ) {
+        messageRepository.saveMessage(
+                chatId,
+                senderId,
+                message
+        );
     }
 
-    public List<Message> getMessages(String contactName) {
-        return messageRepository.getMessages(contactName);
+    public List<Message> getMessages(int chatId) {
+        return messageRepository.getMessages(chatId);
     }
 
-    public void clearChat(String contactName) {
-        messageRepository.deleteMessages(contactName);
+    public void clearChat(int chatId) {
+        messageRepository.deleteMessages(chatId);
     }
 }

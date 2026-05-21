@@ -7,19 +7,18 @@ import java.sql.*;
 
 public class UserRepository {
 
-    public void createUser(String username, String passwordHash) {
-
+    public void createUser(String username, String displayName, String passwordHash) {
         String sql = """
-                INSERT INTO users (username, password_hash)
-                VALUES (?, ?)
+                INSERT INTO users (username, display_name, password_hash)
+                VALUES (?, ?, ?)
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, username);
-            statement.setString(2, passwordHash);
+            statement.setString(2, displayName);
+            statement.setString(3, passwordHash);
 
             statement.executeUpdate();
 
@@ -29,26 +28,24 @@ public class UserRepository {
     }
 
     public User findByUsername(String username) {
-
         String sql = """
-                SELECT id, username
+                SELECT id, username, display_name
                 FROM users
                 WHERE username = ?
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, username);
 
             ResultSet resultSet = statement.executeQuery();
 
             if (resultSet.next()) {
-
                 return new User(
                         resultSet.getInt("id"),
-                        resultSet.getString("username")
+                        resultSet.getString("username"),
+                        resultSet.getString("display_name")
                 );
             }
 
@@ -60,7 +57,6 @@ public class UserRepository {
     }
 
     public String getPasswordHash(String username) {
-
         String sql = """
                 SELECT password_hash
                 FROM users
@@ -68,8 +64,7 @@ public class UserRepository {
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, username);
 
@@ -84,5 +79,17 @@ public class UserRepository {
         }
 
         return null;
+    }
+
+    public User createSystemUserIfNotExists(String username, String displayName) {
+        User existingUser = findByUsername(username);
+
+        if (existingUser != null) {
+            return existingUser;
+        }
+
+        createUser(username, displayName, "system");
+
+        return findByUsername(username);
     }
 }

@@ -4,24 +4,25 @@ import com.example.database.DatabaseConnection;
 import com.example.model.Message;
 
 import java.sql.*;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MessageRepository {
 
-    public void saveMessage(String contactName, Message message) {
+    public void saveMessage(int chatId, int senderId, Message message) {
         String sql = """
-                INSERT INTO messages (contact_name, sender, text, message_time)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO messages (chat_id, sender_id, text)
+                VALUES (?, ?, ?)
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
-            statement.setString(1, contactName);
-            statement.setString(2, message.getSender());
+            statement.setInt(1, chatId);
+            statement.setInt(2, senderId);
             statement.setString(3, message.getText());
-            statement.setString(4, message.getFormattedTime());
 
             statement.executeUpdate();
 
@@ -30,28 +31,35 @@ public class MessageRepository {
         }
     }
 
-    public List<Message> getMessages(String contactName) {
+    public List<Message> getMessages(int chatId) {
         List<Message> messages = new ArrayList<>();
 
         String sql = """
-                SELECT sender, text, message_time
-                FROM messages
-                WHERE contact_name = ?
-                ORDER BY created_at ASC, id ASC
+                SELECT u.username, m.text, m.created_at
+                FROM messages m
+                JOIN users u ON m.sender_id = u.id
+                WHERE m.chat_id = ?
+                ORDER BY m.created_at ASC, m.id ASC
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
-            statement.setString(1, contactName);
+            statement.setInt(1, chatId);
 
             ResultSet resultSet = statement.executeQuery();
 
             while (resultSet.next()) {
+                Timestamp createdAt = resultSet.getTimestamp("created_at");
+
+                String time = createdAt.toInstant()
+                        .atZone(ZoneId.of("Europe/Kyiv"))
+                        .format(DateTimeFormatter.ofPattern("HH:mm"));
+
                 messages.add(new Message(
-                        resultSet.getString("sender"),
+                        resultSet.getString("username"),
                         resultSet.getString("text"),
-                        resultSet.getString("message_time")
+                        time
                 ));
             }
 
@@ -62,13 +70,13 @@ public class MessageRepository {
         return messages;
     }
 
-    public void deleteMessages(String contactName) {
-        String sql = "DELETE FROM messages WHERE contact_name = ?";
+    public void deleteMessages(int chatId) {
+        String sql = "DELETE FROM messages WHERE chat_id = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
-            statement.setString(1, contactName);
+            statement.setInt(1, chatId);
             statement.executeUpdate();
 
         } catch (SQLException e) {

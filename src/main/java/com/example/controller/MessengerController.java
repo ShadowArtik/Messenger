@@ -11,12 +11,14 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import com.example.model.Session;
+import com.example.model.Chat;
 
 import java.util.Optional;
 
 public class MessengerController {
 
-    @FXML private ListView<String> contactsListView;
+    @FXML
+    private ListView<Chat> contactsListView;
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
     @FXML private StackPane chatAvatar;
@@ -24,23 +26,25 @@ public class MessengerController {
     @FXML private VBox dropdownMenu;
 
     private MessengerModel model;
-    private String selectedContact;
+    private Chat selectedChat;
 
     @FXML
     public void initialize() {
         model = new MessengerModel();
 
-        contactsListView.setItems(model.getContacts());
+        contactsListView.setItems(model.getChats());
         contactsListView.setCellFactory(listView -> new ListCell<>() {
             @Override
-            protected void updateItem(String name, boolean empty) {
-                super.updateItem(name, empty);
+            protected void updateItem(Chat chat, boolean empty) {
+                super.updateItem(chat, empty);
 
-                if (empty || name == null) {
+                if (empty || chat == null) {
                     setText(null);
                     setGraphic(null);
                     return;
                 }
+
+                String name = chat.getName();
 
                 StackPane avatar = createAvatar(name, 18);
 
@@ -50,7 +54,7 @@ public class MessengerController {
                 HBox nameBox = new HBox(6, nameLabel);
                 nameBox.setAlignment(Pos.CENTER_LEFT);
 
-                if (model.isBotContact(name)) {
+                if (model.isBotChat(chat)) {
                     Label botBadge = createBotBadge();
                     nameBox.getChildren().add(botBadge);
                 }
@@ -102,17 +106,17 @@ public class MessengerController {
             }
         });
 
-        if (!model.getContacts().isEmpty()) {
-            selectedContact = model.getContacts().get(0);
-            contactsListView.getSelectionModel().select(selectedContact);
-            openChat(selectedContact);
+        if (!model.getChats().isEmpty()) {
+            selectedChat = model.getChats().get(0);
+            contactsListView.getSelectionModel().select(selectedChat);
+            openChat(selectedChat);
         }
 
         contactsListView.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> {
                     if (newValue != null) {
-                        selectedContact = newValue;
-                        openChat(selectedContact);
+                        selectedChat = newValue;
+                        openChat(selectedChat);
                         hideDropdownMenu();
                     }
                 }
@@ -121,16 +125,18 @@ public class MessengerController {
         messageTextField.setOnAction(event -> onSendButtonClick());
     }
 
-    private void openChat(String contactName) {
-        updateChatHeader(contactName);
-        messagesListView.setItems(model.getMessagesForContact(contactName));
+    private void openChat(Chat chat) {
+        updateChatHeader(chat);
+        messagesListView.setItems(model.getMessagesForChat(chat));
     }
 
-    private void updateChatHeader(String name) {
+    private void updateChatHeader(Chat chat) {
+        String name = chat.getName();
+
         chatTitleLabel.setText(name);
         chatTitleLabel.setGraphic(null);
 
-        if (model.isBotContact(name)) {
+        if (model.isBotChat(chat)) {
             Label titleLabel = new Label(name);
             titleLabel.setStyle(
                     "-fx-text-fill: white;" +
@@ -190,7 +196,7 @@ public class MessengerController {
 
     @FXML
     private void onClearChatClick() {
-        model.clearChat(selectedContact);
+        model.clearChat(selectedChat);
         hideDropdownMenu();
     }
 
@@ -198,7 +204,7 @@ public class MessengerController {
     private void onRenameChatClick() {
         hideDropdownMenu();
 
-        TextInputDialog dialog = new TextInputDialog(selectedContact);
+        TextInputDialog dialog = new TextInputDialog(selectedChat.getName());
         dialog.setTitle("Rename chat");
         dialog.setHeaderText(null);
         dialog.setContentText("New chat name:");
@@ -211,20 +217,15 @@ public class MessengerController {
 
         String newName = result.get().trim();
 
-        if (newName.isEmpty() || newName.equals(selectedContact)) {
+        if (newName.isEmpty() || newName.equals(selectedChat.getName())) {
             return;
         }
 
-        if (model.hasContact(newName)) {
-            showMessage("Chat already exists", "A chat with this name already exists.");
-            return;
-        }
+        model.renameChat(selectedChat, newName);
 
-        model.renameChat(selectedContact, newName);
-        selectedContact = newName;
+        selectedChat = contactsListView.getSelectionModel().getSelectedItem();
 
-        contactsListView.getSelectionModel().select(selectedContact);
-        openChat(selectedContact);
+        openChat(selectedChat);
         contactsListView.refresh();
     }
 
@@ -232,7 +233,7 @@ public class MessengerController {
     private void onDeleteChatClick() {
         hideDropdownMenu();
 
-        if (model.getContacts().size() <= 1) {
+        if (model.getChats().size() <= 1) {
             showMessage("Cannot delete chat", "You cannot delete the last chat.");
             return;
         }
@@ -240,7 +241,7 @@ public class MessengerController {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Delete chat");
         alert.setHeaderText(null);
-        alert.setContentText("Delete chat with " + selectedContact + "?");
+        alert.setContentText("Delete chat with " + selectedChat.getName() + "?");
 
         Optional<ButtonType> result = alert.showAndWait();
 
@@ -251,13 +252,13 @@ public class MessengerController {
         int oldIndex = contactsListView.getSelectionModel().getSelectedIndex();
         oldIndex = Math.max(oldIndex, 0);
 
-        model.deleteChat(selectedContact);
+        model.deleteChat(selectedChat);
 
-        int newIndex = Math.min(oldIndex, model.getContacts().size() - 1);
-        selectedContact = model.getContacts().get(newIndex);
+        int newIndex = Math.min(oldIndex, model.getChats().size() - 1);
 
-        contactsListView.getSelectionModel().select(selectedContact);
-        openChat(selectedContact);
+        selectedChat = model.getChats().get(newIndex);
+        contactsListView.getSelectionModel().select(selectedChat);
+        openChat(selectedChat);
     }
 
     @FXML
@@ -267,7 +268,7 @@ public class MessengerController {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Create chat");
         dialog.setHeaderText(null);
-        dialog.setContentText("Chat name:");
+        dialog.setContentText("Enter username:");
 
         Optional<String> result = dialog.showAndWait();
 
@@ -275,22 +276,25 @@ public class MessengerController {
             return;
         }
 
-        String newName = result.get().trim();
+        String username = result.get().trim();
 
-        if (newName.isEmpty()) {
+        if (username.isEmpty()) {
             return;
         }
 
-        if (model.hasContact(newName)) {
-            showMessage("Chat already exists", "A chat with this name already exists.");
+        Chat createdChat = model.addChat(username);
+
+        if (createdChat == null) {
+            showMessage(
+                    "Error",
+                    "User not found, chat already exists, or you entered your own username."
+            );
             return;
         }
 
-        model.addContact(newName);
-
-        selectedContact = newName;
-        contactsListView.getSelectionModel().select(selectedContact);
-        openChat(selectedContact);
+        selectedChat = createdChat;
+        contactsListView.getSelectionModel().select(selectedChat);
+        openChat(selectedChat);
     }
 
     @FXML
@@ -306,15 +310,17 @@ public class MessengerController {
                 Session.getCurrentUser().getUsername(),
                 text
         );
-        model.addMessage(selectedContact, userMessage);
+        model.addMessage(selectedChat, userMessage);
 
-        if (model.isBotContact(selectedContact)) {
+        if (model.isBotChat(selectedChat)) {
             Message botMessage = model.generateBotResponse(text);
-            model.addMessage(selectedContact, botMessage);
+            model.addBotMessage(selectedChat, botMessage);
         }
 
         messageTextField.clear();
-        messagesListView.scrollTo(model.getMessagesForContact(selectedContact).size() - 1);
+        messagesListView.scrollTo(
+                model.getMessagesForChat(selectedChat).size() - 1
+        );
     }
 
     private void showMessage(String title, String text) {

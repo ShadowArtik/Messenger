@@ -1,9 +1,11 @@
 package com.example.model;
 
-import com.example.service.ContactService;
+import com.example.service.ChatService;
 import com.example.service.MessageService;
+import com.example.service.UserService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+
 
 import java.util.HashMap;
 import java.util.List;
@@ -11,102 +13,195 @@ import java.util.Map;
 
 public class MessengerModel {
 
-    private final ObservableList<String> contacts;
-    private final Map<String, ObservableList<Message>> chatMessages;
+    private final ObservableList<Chat> chats;
+    private final Map<Integer, ObservableList<Message>> chatMessages;
+
     private final MessageService messageService;
-    private final ContactService contactService;
+    private final ChatService chatService;
+    private final UserService userService;
+    private User helperBotUser;
 
     public MessengerModel() {
-        contacts = FXCollections.observableArrayList();
+        chats = FXCollections.observableArrayList();
         chatMessages = new HashMap<>();
+
         messageService = new MessageService();
-        contactService = new ContactService();
+        chatService = new ChatService();
+        userService = new UserService();
+        helperBotUser = userService.createSystemUserIfNotExists(
+                "helper_bot",
+                "Helper"
+        );
 
-        loadContacts();
+        loadChats();
     }
 
-    private void loadContacts() {
-        List<String> savedContacts = contactService.getAllContacts();
+    private void loadChats() {
+        int currentUserId = Session.getCurrentUser().getId();
 
-        if (savedContacts.isEmpty()) {
-            contactService.saveBotContact("Helper");
-            addContactToMemory("Helper");
+        List<Chat> savedChats = chatService.getChatsForUser(currentUserId);
+
+        if (savedChats.isEmpty()) {
+            Chat helperChat = chatService.createBotChat("Helper", currentUserId);
+
+            if (helperChat != null) {
+                addChatToMemory(helperChat);
+            }
+
             return;
         }
 
-        for (String contact : savedContacts) {
-            addContactToMemory(contact);
+        for (Chat chat : savedChats) {
+            addChatToMemory(chat);
         }
     }
 
-    private void addContactToMemory(String contactName) {
-        if (chatMessages.containsKey(contactName)) {
+    private void addChatToMemory(Chat chat) {
+        if (chatMessages.containsKey(chat.getId())) {
             return;
         }
 
-        contacts.add(contactName);
+        chats.add(chat);
 
         ObservableList<Message> messages =
-                FXCollections.observableArrayList(messageService.getMessages(contactName));
+                FXCollections.observableArrayList(
+                        messageService.getMessages(chat.getId())
+                );
 
-        chatMessages.put(contactName, messages);
+        chatMessages.put(chat.getId(), messages);
     }
 
-    public void addContact(String contactName) {
-        if (chatMessages.containsKey(contactName)) {
+    public Chat addChat(String username) {
+        User targetUser = userService.findByUsername(username);
+
+        if (targetUser == null) {
+            return null;
+        }
+
+        if (targetUser.getId() == Session.getCurrentUser().getId()) {
+            return null;
+        }
+
+        for (Chat existingChat : chats) {
+            if (existingChat.getName()
+                    .equalsIgnoreCase(targetUser.getDisplayName())) {
+                return null;
+            }
+        }
+
+        Chat chat = chatService.createPrivateChat(
+                targetUser.getDisplayName(),
+                Session.getCurrentUser().getId(),
+                targetUser.getId()
+        );
+
+        if (chat != null) {
+            addChatToMemory(chat);
+        }
+
+        return chat;
+    }
+
+    public boolean isBotChat(Chat chat) {
+        return chat != null && chat.isBot();
+    }
+
+    public void renameChat(Chat chat, String newName) {
+        if (chat == null) {
             return;
         }
 
-        contactService.saveContact(contactName);
-        addContactToMemory(contactName);
-    }
+        for (Chat existingChat : chats) {
+            if (existingChat.getName()
+                    .equalsIgnoreCase(newName)
+                    && existingChat.getId() != chat.getId()) {
+                return;
+            }
+        }
 
-    public boolean hasContact(String contactName) {
-        return chatMessages.containsKey(contactName);
-    }
+        int index = chats.indexOf(chat);
 
-    public boolean isBotContact(String contactName) {
-        return contactService.isBotContact(contactName);
-    }
-
-    public void renameChat(String oldName, String newName) {
-        int contactIndex = contacts.indexOf(oldName);
-
-        if (contactIndex == -1 || chatMessages.containsKey(newName)) {
+        if (index == -1) {
             return;
         }
 
-        ObservableList<Message> messages = chatMessages.remove(oldName);
-        chatMessages.put(newName, messages);
-        contacts.set(contactIndex, newName);
+        chatService.renameChat(chat.getId(), newName);
 
-        contactService.renameContact(oldName, newName);
+        Chat renamedChat = new Chat(
+                chat.getId(),
+                newName,
+                chat.getType()
+        );
+
+        chats.set(index, renamedChat);
+
+        ObservableList<Message> messages = chatMessages.remove(chat.getId());
+        chatMessages.put(renamedChat.getId(), messages);
     }
 
-    public void deleteChat(String contactName) {
-        contacts.remove(contactName);
-        chatMessages.remove(contactName);
+    public void deleteChat(Chat chat) {
+        if (chat == null) {
+            return;
+        }
 
-        contactService.deleteContact(contactName);
-        messageService.clearChat(contactName);
+        chats.remove(chat);
+        chatMessages.remove(chat.getId());
+
+        chatService.deleteChat(chat.getId());
     }
 
-    public void clearChat(String contactName) {
-        chatMessages.get(contactName).clear();
-        messageService.clearChat(contactName);
+    public void clearChat(Chat chat) {
+        if (chat == null) {
+            return;
+        }
+
+        ObservableList<Message> messages = chatMessages.get(chat.getId());
+
+        if (messages != null) {
+            messages.clear();
+        }
+
+        messageService.clearChat(chat.getId());
     }
 
-    public ObservableList<String> getContacts() {
-        return contacts;
+    public ObservableList<Chat> getChats() {
+        return chats;
     }
 
-    public ObservableList<Message> getMessagesForContact(String contactName) {
-        return chatMessages.get(contactName);
+    public ObservableList<Message> getMessagesForChat(Chat chat) {
+        if (chat == null) {
+            return FXCollections.observableArrayList();
+        }
+
+        return chatMessages.get(chat.getId());
     }
 
-    public void addMessage(String contactName, Message message) {
-        chatMessages.get(contactName).add(message);
-        messageService.saveMessage(contactName, message);
+    public void addMessage(Chat chat, Message message) {
+        if (chat == null) {
+            return;
+        }
+
+        chatMessages.get(chat.getId()).add(message);
+
+        messageService.saveMessage(
+                chat.getId(),
+                Session.getCurrentUser().getId(),
+                message
+        );
+    }
+
+    public void addBotMessage(Chat chat, Message message) {
+        if (chat == null || helperBotUser == null) {
+            return;
+        }
+
+        chatMessages.get(chat.getId()).add(message);
+
+        messageService.saveMessage(
+                chat.getId(),
+                helperBotUser.getId(),
+                message
+        );
     }
 
     public Message generateBotResponse(String userText) {

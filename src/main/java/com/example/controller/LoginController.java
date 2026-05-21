@@ -1,5 +1,6 @@
 package com.example.controller;
 
+import com.example.model.Session;
 import com.example.service.UserService;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -7,30 +8,48 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import com.example.model.Session;
 
 public class LoginController {
 
-    @FXML
-    private TextField usernameField;
+    @FXML private VBox loginBox;
+    @FXML private VBox registerBox;
 
-    @FXML
-    private PasswordField passwordField;
+    @FXML private TextField loginUsernameField;
+    @FXML private PasswordField loginPasswordField;
+
+    @FXML private TextField registerUsernameField;
+    @FXML private TextField displayNameField;
+    @FXML private PasswordField registerPasswordField;
 
     private final UserService userService = new UserService();
 
     @FXML
+    private void showLoginForm() {
+        loginBox.setVisible(true);
+        loginBox.setManaged(true);
+
+        registerBox.setVisible(false);
+        registerBox.setManaged(false);
+    }
+
+    @FXML
+    private void showRegisterForm() {
+        loginBox.setVisible(false);
+        loginBox.setManaged(false);
+
+        registerBox.setVisible(true);
+        registerBox.setManaged(true);
+    }
+
+    @FXML
     private void onLoginClick() {
-        String username = usernameField.getText().trim();
-        String password = passwordField.getText().trim();
+        String username = loginUsernameField.getText().trim();
+        String password = loginPasswordField.getText().trim();
 
         if (userService.login(username, password)) {
-
-            Session.setCurrentUser(
-                    userService.getCurrentUser()
-            );
-
+            Session.setCurrentUser(userService.getCurrentUser());
             openMessenger();
         } else {
             showError("Login failed", "Wrong username or password.");
@@ -39,20 +58,22 @@ public class LoginController {
 
     @FXML
     private void onRegisterClick() {
-        String username = usernameField.getText().trim();
-        String password = passwordField.getText().trim();
+        String username = registerUsernameField.getText().trim();
+        String displayName = displayNameField.getText().trim();
+        String password = registerPasswordField.getText().trim();
 
-        if (userService.register(username, password)) {
-
+        if (userService.register(username, displayName, password)) {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Success");
             alert.setHeaderText(null);
             alert.setContentText("Account created successfully.");
             alert.showAndWait();
 
-            usernameField.clear();
-            passwordField.clear();
+            registerUsernameField.clear();
+            displayNameField.clear();
+            registerPasswordField.clear();
 
+            showLoginForm();
         } else {
             showError(
                     "Registration failed",
@@ -72,7 +93,7 @@ public class LoginController {
                     getClass().getResource("/style.css").toExternalForm()
             );
 
-            Stage stage = (Stage) usernameField.getScene().getWindow();
+            Stage stage = (Stage) loginUsernameField.getScene().getWindow();
             stage.setTitle(
                     "Messenger - " +
                             Session.getCurrentUser().getUsername()

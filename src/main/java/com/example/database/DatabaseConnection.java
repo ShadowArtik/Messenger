@@ -28,39 +28,50 @@ public class DatabaseConnection {
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username VARCHAR(100) NOT NULL UNIQUE,
+            display_name VARCHAR(100) NOT NULL,
             password_hash VARCHAR(255) NOT NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         """;
 
-        String contactsSql = """
-                CREATE TABLE IF NOT EXISTS contacts (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(100) NOT NULL UNIQUE,
-                    contact_type VARCHAR(20) NOT NULL DEFAULT 'USER'
-                );
-                """;
+        String chatsSql = """
+        CREATE TABLE IF NOT EXISTS chats (
+            id SERIAL PRIMARY KEY,
+            chat_name VARCHAR(100) NOT NULL,
+            chat_type VARCHAR(20) NOT NULL DEFAULT 'PRIVATE',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """;
+
+        String chatMembersSql = """
+        CREATE TABLE IF NOT EXISTS chat_members (
+            chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            PRIMARY KEY (chat_id, user_id)
+        );
+        """;
 
         String messagesSql = """
-                CREATE TABLE IF NOT EXISTS messages (
-                    id SERIAL PRIMARY KEY,
-                    contact_name VARCHAR(100) NOT NULL,
-                    sender VARCHAR(50) NOT NULL,
-                    text TEXT NOT NULL,
-                    message_time VARCHAR(10) NOT NULL,
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-                """;
+        CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+            sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            text TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """;
 
         try (Connection connection = getConnection();
              Statement statement = connection.createStatement()) {
 
             statement.execute(usersSql);
-            statement.execute(contactsSql);
+            statement.execute(chatsSql);
+            statement.execute(chatMembersSql);
             statement.execute(messagesSql);
 
             System.out.println("Table users is ready");
-            System.out.println("Table contacts is ready");
+            System.out.println("Table chats is ready");
+            System.out.println("Table chat_members is ready");
             System.out.println("Table messages is ready");
 
         } catch (SQLException e) {
