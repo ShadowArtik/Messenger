@@ -2,6 +2,7 @@ package com.example.controller;
 
 import com.example.model.Session;
 import com.example.service.UserService;
+import com.example.service.result.RegisterResult;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -62,22 +63,44 @@ public class LoginController {
         String displayName = displayNameField.getText().trim();
         String password = registerPasswordField.getText().trim();
 
-        if (userService.register(username, displayName, password)) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Success");
-            alert.setHeaderText(null);
-            alert.setContentText("Account created successfully.");
-            alert.showAndWait();
+        RegisterResult result = userService.register(
+                username,
+                displayName,
+                password
+        );
 
-            registerUsernameField.clear();
-            displayNameField.clear();
-            registerPasswordField.clear();
+        switch (result) {
+            case SUCCESS -> {
+                showSuccess(
+                        "Success",
+                        "Account created successfully."
+                );
 
-            showLoginForm();
-        } else {
-            showError(
-                    "Registration failed",
-                    "User already exists or fields are empty."
+                registerUsernameField.clear();
+                displayNameField.clear();
+                registerPasswordField.clear();
+
+                showLoginForm();
+            }
+
+            case INVALID_USERNAME -> showError(
+                    "Invalid username",
+                    "Username must be 3-20 characters and contain only letters, numbers or _."
+            );
+
+            case INVALID_DISPLAY_NAME -> showError(
+                    "Invalid display name",
+                    "Display name must be 2-30 characters."
+            );
+
+            case INVALID_PASSWORD -> showError(
+                    "Invalid password",
+                    "Password must be at least 6 characters."
+            );
+
+            case USER_ALREADY_EXISTS -> showError(
+                    "User already exists",
+                    "This username is already taken."
             );
         }
     }
@@ -108,9 +131,37 @@ public class LoginController {
 
     private void showError(String title, String text) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
+
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(text);
+
+        alert.getDialogPane()
+                .getStylesheets()
+                .add(
+                        getClass()
+                                .getResource("/style.css")
+                                .toExternalForm()
+                );
+
+        alert.showAndWait();
+    }
+
+    private void showSuccess(String title, String text) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(text);
+
+        alert.getDialogPane()
+                .getStylesheets()
+                .add(
+                        getClass()
+                                .getResource("/style.css")
+                                .toExternalForm()
+                );
+
         alert.showAndWait();
     }
 }

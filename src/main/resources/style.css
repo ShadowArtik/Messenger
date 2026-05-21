@@ -211,3 +211,25 @@
     -fx-padding: 2 6 2 6;
     -fx-background-radius: 5;
 }
+
+.dialog-pane {
+    -fx-background-color: #2B2D31;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #1E1F22;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: white;
+}
+
+.dialog-pane .button {
+    -fx-background-color: #5865F2;
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+}
+
+.dialog-pane .button:hover {
+    -fx-background-color: #6A75FF;
+}
