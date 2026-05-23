@@ -65,37 +65,26 @@ public class ChatRepository {
         List<Chat> chats = new ArrayList<>();
 
         String sql = """
-            SELECT
-                c.id,
-                c.chat_type,
-                CASE
-                    WHEN c.chat_type = 'PRIVATE' THEN other_user.display_name
-                    ELSE c.chat_name
-                END AS display_name
+            SELECT c.id,
+                   COALESCE(cm.custom_chat_name, c.chat_name) AS chat_name,
+                   c.chat_type
             FROM chats c
-            JOIN chat_members cm_current
-                ON c.id = cm_current.chat_id
-            LEFT JOIN chat_members cm_other
-                ON c.id = cm_other.chat_id
-                AND cm_other.user_id <> ?
-            LEFT JOIN users other_user
-                ON cm_other.user_id = other_user.id
-            WHERE cm_current.user_id = ?
-            ORDER BY c.id ASC
+            JOIN chat_members cm ON c.id = cm.chat_id
+            WHERE cm.user_id = ?
+            ORDER BY c.updated_at DESC, c.id DESC
             """;
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setInt(1, userId);
-            statement.setInt(2, userId);
 
             ResultSet resultSet = statement.executeQuery();
 
             while (resultSet.next()) {
                 chats.add(new Chat(
                         resultSet.getInt("id"),
-                        resultSet.getString("display_name"),
+                        resultSet.getString("chat_name"),
                         resultSet.getString("chat_type")
                 ));
             }
@@ -107,18 +96,20 @@ public class ChatRepository {
         return chats;
     }
 
-    public void renameChat(int chatId, String newName) {
+    public void renameChat(int chatId, int userId, String newName) {
         String sql = """
-                UPDATE chats
-                SET chat_name = ?
-                WHERE id = ?
-                """;
+            UPDATE chat_members
+            SET custom_chat_name = ?
+            WHERE chat_id = ? AND user_id = ?
+            """;
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, newName);
             statement.setInt(2, chatId);
+            statement.setInt(3, userId);
+
             statement.executeUpdate();
 
         } catch (SQLException e) {
@@ -165,59 +156,85 @@ public class ChatRepository {
         return false;
     }
 
-        public Chat createPrivateChat(String chatName, int firstUserId, int secondUserId) {
-            String insertChatSql = """
+    public Chat createPrivateChat(
+            String chatName,
+            int currentUserId,
+            int targetUserId,
+            String currentUserChatName,
+            String targetUserChatName
+    ) {
+        String insertChatSql = """
             INSERT INTO chats (chat_name, chat_type)
             VALUES (?, 'PRIVATE')
             RETURNING id, chat_name, chat_type
             """;
 
-            String insertMemberSql = """
-            INSERT INTO chat_members (chat_id, user_id)
-            VALUES (?, ?)
+        String insertMemberSql = """
+            INSERT INTO chat_members (chat_id, user_id, custom_chat_name)
+            VALUES (?, ?, ?)
             """;
 
-            try (Connection connection = DatabaseConnection.getConnection()) {
-                connection.setAutoCommit(false);
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
 
-                try (PreparedStatement chatStatement = connection.prepareStatement(insertChatSql)) {
-                    chatStatement.setString(1, chatName);
+            try (PreparedStatement chatStatement = connection.prepareStatement(insertChatSql)) {
+                chatStatement.setString(1, chatName);
 
-                    ResultSet resultSet = chatStatement.executeQuery();
+                ResultSet resultSet = chatStatement.executeQuery();
 
-                    if (resultSet.next()) {
-                        int chatId = resultSet.getInt("id");
+                if (resultSet.next()) {
+                    int chatId = resultSet.getInt("id");
 
-                        try (PreparedStatement memberStatement = connection.prepareStatement(insertMemberSql)) {
-                            memberStatement.setInt(1, chatId);
-                            memberStatement.setInt(2, firstUserId);
-                            memberStatement.executeUpdate();
+                    try (PreparedStatement memberStatement = connection.prepareStatement(insertMemberSql)) {
+                        memberStatement.setInt(1, chatId);
+                        memberStatement.setInt(2, currentUserId);
+                        memberStatement.setString(3, currentUserChatName);
+                        memberStatement.executeUpdate();
 
-                            memberStatement.setInt(1, chatId);
-                            memberStatement.setInt(2, secondUserId);
-                            memberStatement.executeUpdate();
-                        }
-
-                        connection.commit();
-
-                        return new Chat(
-                                chatId,
-                                resultSet.getString("chat_name"),
-                                resultSet.getString("chat_type")
-                        );
+                        memberStatement.setInt(1, chatId);
+                        memberStatement.setInt(2, targetUserId);
+                        memberStatement.setString(3, targetUserChatName);
+                        memberStatement.executeUpdate();
                     }
 
-                } catch (SQLException e) {
-                    connection.rollback();
-                    throw e;
-                } finally {
-                    connection.setAutoCommit(true);
+                    connection.commit();
+
+                    return new Chat(
+                            chatId,
+                            currentUserChatName,
+                            resultSet.getString("chat_type")
+                    );
                 }
 
             } catch (SQLException e) {
-                e.printStackTrace();
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
 
-            return null;
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+
+        return null;
+    }
+
+    public void updateChatActivity(int chatId) {
+        String sql = """
+            UPDATE chats
+            SET updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, chatId);
+            statement.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }

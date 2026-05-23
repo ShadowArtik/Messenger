@@ -21,8 +21,8 @@ public class ChatService {
         return chatRepository.getChatsForUser(userId);
     }
 
-    public void renameChat(int chatId, String newName) {
-        chatRepository.renameChat(chatId, newName);
+    public void renameChat(int chatId, int userId, String newName) {
+        chatRepository.renameChat(chatId, userId, newName);
     }
 
     public void deleteChat(int chatId) {
@@ -33,7 +33,23 @@ public class ChatService {
         return chatRepository.isBotChat(chatId);
     }
 
-    public Chat createPrivateChat(String chatName, int firstUserId, int secondUserId) {
-        return chatRepository.createPrivateChat(chatName, firstUserId, secondUserId);
+    public Chat createPrivateChat(
+            String chatName,
+            int currentUserId,
+            int targetUserId,
+            String currentUserChatName,
+            String targetUserChatName
+    ) {
+        return chatRepository.createPrivateChat(
+                chatName,
+                currentUserId,
+                targetUserId,
+                currentUserChatName,
+                targetUserChatName
+        );
+    }
+
+    public void updateChatActivity(int chatId) {
+        chatRepository.updateChatActivity(chatId);
     }
 }

@@ -44,18 +44,18 @@ public class MessengerModel {
 
         List<Chat> savedChats = chatService.getChatsForUser(currentUserId);
 
-        if (savedChats.isEmpty()) {
+        for (Chat chat : savedChats) {
+            addChatToMemory(chat);
+        }
+
+        if (!userService.isHelperInitialized(currentUserId)) {
             Chat helperChat = chatService.createBotChat("Helper", currentUserId);
 
             if (helperChat != null) {
                 addChatToMemory(helperChat);
             }
 
-            return;
-        }
-
-        for (Chat chat : savedChats) {
-            addChatToMemory(chat);
+            userService.markHelperInitialized(currentUserId);
         }
     }
 
@@ -108,7 +108,9 @@ public class MessengerModel {
         Chat chat = chatService.createPrivateChat(
                 targetUser.getDisplayName(),
                 Session.getCurrentUser().getId(),
-                targetUser.getId()
+                targetUser.getId(),
+                targetUser.getDisplayName(),
+                Session.getCurrentUser().getDisplayName()
         );
 
         if (chat == null) {
@@ -149,7 +151,7 @@ public class MessengerModel {
             return;
         }
 
-        chatService.renameChat(chat.getId(), newName);
+        chatService.renameChat(chat.getId(), Session.getCurrentUser().getId(), newName);
 
         Chat renamedChat = new Chat(
                 chat.getId(),
@@ -212,6 +214,10 @@ public class MessengerModel {
                 Session.getCurrentUser().getId(),
                 message
         );
+
+        chatService.updateChatActivity(chat.getId());
+
+        moveChatToTop(chat);
     }
 
     public void addBotMessage(Chat chat, Message message) {
@@ -226,6 +232,9 @@ public class MessengerModel {
                 helperBotUser.getId(),
                 message
         );
+
+        chatService.updateChatActivity(chat.getId());
+        moveChatToTop(chat);
     }
 
     public Message generateBotResponse(String userText) {
@@ -240,5 +249,14 @@ public class MessengerModel {
         }
 
         return new Message("Bot", response);
+    }
+
+    private void moveChatToTop(Chat chat) {
+        int index = chats.indexOf(chat);
+
+        if (index > 0) {
+            chats.remove(chat);
+            chats.add(0, chat);
+        }
     }
 }

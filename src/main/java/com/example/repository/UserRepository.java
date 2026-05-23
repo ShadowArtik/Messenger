@@ -97,4 +97,47 @@ public class UserRepository {
 
         return findByUsername(username);
     }
+
+    public boolean isHelperInitialized(int userId) {
+        String sql = """
+            SELECT helper_initialized
+            FROM users
+            WHERE id = ?
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, userId);
+
+            ResultSet resultSet = statement.executeQuery();
+
+            if (resultSet.next()) {
+                return resultSet.getBoolean("helper_initialized");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    public void markHelperInitialized(int userId) {
+        String sql = """
+            UPDATE users
+            SET helper_initialized = TRUE
+            WHERE id = ?
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, userId);
+            statement.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }

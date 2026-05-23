@@ -80,4 +80,12 @@ public class UserService {
     public User createSystemUserIfNotExists(String username, String displayName) {
         return userRepository.createSystemUserIfNotExists(username, displayName);
     }
+
+    public boolean isHelperInitialized(int userId) {
+        return userRepository.isHelperInitialized(userId);
+    }
+
+    public void markHelperInitialized(int userId) {
+        userRepository.markHelperInitialized(userId);
+    }
 }

@@ -30,6 +30,7 @@ public class DatabaseConnection {
             username VARCHAR(100) NOT NULL UNIQUE,
             display_name VARCHAR(100) NOT NULL,
             password_hash VARCHAR(255) NOT NULL,
+            helper_initialized BOOLEAN NOT NULL DEFAULT FALSE,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         """;
@@ -39,7 +40,8 @@ public class DatabaseConnection {
             id SERIAL PRIMARY KEY,
             chat_name VARCHAR(100) NOT NULL,
             chat_type VARCHAR(20) NOT NULL DEFAULT 'PRIVATE',
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         """;
 
@@ -47,6 +49,7 @@ public class DatabaseConnection {
         CREATE TABLE IF NOT EXISTS chat_members (
             chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            custom_chat_name VARCHAR(100),
             PRIMARY KEY (chat_id, user_id)
         );
         """;
