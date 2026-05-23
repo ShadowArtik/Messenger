@@ -12,20 +12,29 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.control.TextInputDialog;
+import java.util.Optional;
 import com.example.model.Session;
 import com.example.model.Chat;
-
-import java.util.Optional;
 
 public class MessengerController {
 
     @FXML
     private ListView<Chat> contactsListView;
+    @FXML
+    private StackPane createChatOverlay;
+    @FXML
+    private TextField createChatUsernameField;
+    @FXML
+    private Label createChatErrorLabel;
+
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
     @FXML private StackPane chatAvatar;
     @FXML private TextField messageTextField;
+    @FXML private Button menuButton;
     @FXML private VBox dropdownMenu;
+    private ContextMenu chatMenu;
 
     private MessengerModel model;
     private Chat selectedChat;
@@ -66,6 +75,19 @@ public class MessengerController {
 
                 setText(null);
                 setGraphic(container);
+
+                chatMenu = new ContextMenu();
+
+                MenuItem clearItem = new MenuItem("Clear chat");
+                clearItem.setOnAction(event -> onClearChatClick());
+
+                MenuItem renameItem = new MenuItem("Rename");
+                renameItem.setOnAction(event -> onRenameChatClick());
+
+                MenuItem deleteItem = new MenuItem("Delete chat");
+                deleteItem.setOnAction(event -> onDeleteChatClick());
+
+                chatMenu.getItems().addAll(clearItem, renameItem, deleteItem);
             }
         });
 
@@ -191,9 +213,11 @@ public class MessengerController {
 
     @FXML
     private void onMenuButtonClick() {
-        boolean showMenu = !dropdownMenu.isVisible();
-        dropdownMenu.setVisible(showMenu);
-        dropdownMenu.setManaged(showMenu);
+        if (chatMenu.isShowing()) {
+            chatMenu.hide();
+        } else {
+            chatMenu.show(menuButton, javafx.geometry.Side.BOTTOM, 0, 6);
+        }
     }
 
     @FXML
@@ -267,20 +291,35 @@ public class MessengerController {
     private void onCreateChatClick() {
         hideDropdownMenu();
 
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Create chat");
-        dialog.setHeaderText(null);
-        dialog.setContentText("Enter username:");
+        createChatUsernameField.clear();
 
-        Optional<String> result = dialog.showAndWait();
+        createChatErrorLabel.setText("");
+        createChatErrorLabel.setVisible(false);
+        createChatErrorLabel.setManaged(false);
 
-        if (result.isEmpty()) {
-            return;
-        }
+        createChatOverlay.setVisible(true);
+        createChatOverlay.toFront();
 
-        String username = result.get().trim();
+        createChatUsernameField.requestFocus();
+    }
+
+    @FXML
+    private void onCancelCreateChatClick() {
+        createChatOverlay.setVisible(false);
+
+        createChatUsernameField.clear();
+
+        createChatErrorLabel.setText("");
+        createChatErrorLabel.setVisible(false);
+        createChatErrorLabel.setManaged(false);
+    }
+
+    @FXML
+    private void onConfirmCreateChatClick() {
+        String username = createChatUsernameField.getText().trim();
 
         if (username.isEmpty()) {
+            showCreateChatError("Please enter username.");
             return;
         }
 
@@ -288,31 +327,42 @@ public class MessengerController {
 
         switch (response.getResult()) {
             case SUCCESS -> {
+                createChatOverlay.setVisible(false);
+                createChatOverlay.setManaged(false);
+
+                createChatUsernameField.clear();
+
+                createChatErrorLabel.setText("");
+                createChatErrorLabel.setVisible(false);
+                createChatErrorLabel.setManaged(false);
+
                 selectedChat = response.getChat();
                 contactsListView.getSelectionModel().select(selectedChat);
                 openChat(selectedChat);
             }
 
-            case USER_NOT_FOUND -> showMessage(
-                    "User not found",
+            case USER_NOT_FOUND -> showCreateChatError(
                     "No user with this username was found."
             );
 
-            case SELF_CHAT -> showMessage(
-                    "Invalid chat",
+            case SELF_CHAT -> showCreateChatError(
                     "You cannot create a chat with yourself."
             );
 
-            case CHAT_ALREADY_EXISTS -> showMessage(
-                    "Chat already exists",
+            case CHAT_ALREADY_EXISTS -> showCreateChatError(
                     "You already have a chat with this user."
             );
 
-            case DATABASE_ERROR -> showMessage(
-                    "Database error",
+            case DATABASE_ERROR -> showCreateChatError(
                     "Could not create chat. Please try again."
             );
         }
+    }
+
+    private void showCreateChatError(String message) {
+        createChatErrorLabel.setText(message);
+        createChatErrorLabel.setVisible(true);
+        createChatErrorLabel.setManaged(true);
     }
 
     @FXML
@@ -350,7 +400,8 @@ public class MessengerController {
     }
 
     private void hideDropdownMenu() {
-        dropdownMenu.setVisible(false);
-        dropdownMenu.setManaged(false);
+        if (chatMenu != null) {
+            chatMenu.hide();
+        }
     }
 }
