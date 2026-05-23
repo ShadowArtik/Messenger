@@ -12,10 +12,12 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.control.TextInputDialog;
 import java.util.Optional;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import com.example.model.Session;
 import com.example.model.Chat;
+
 
 public class MessengerController {
 
@@ -27,6 +29,16 @@ public class MessengerController {
     private TextField createChatUsernameField;
     @FXML
     private Label createChatErrorLabel;
+    @FXML
+    private StackPane renameChatOverlay;
+    @FXML
+    private TextField renameChatNameField;
+    @FXML
+    private Label renameChatErrorLabel;
+    @FXML
+    private StackPane deleteChatOverlay;
+    @FXML
+    private StackPane clearChatOverlay;
 
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
@@ -222,28 +234,84 @@ public class MessengerController {
 
     @FXML
     private void onClearChatClick() {
-        model.clearChat(selectedChat);
         hideDropdownMenu();
+
+        if (selectedChat == null) {
+            return;
+        }
+
+        clearChatOverlay.setVisible(true);
+        clearChatOverlay.toFront();
+    }
+
+    @FXML
+    private void onCancelClearChatClick() {
+        clearChatOverlay.setVisible(false);
+    }
+
+    @FXML
+    private void onConfirmClearChatClick() {
+        if (selectedChat == null) {
+            clearChatOverlay.setVisible(false);
+            return;
+        }
+
+        model.clearChat(selectedChat);
+
+        messagesListView.setItems(
+                model.getMessagesForChat(selectedChat)
+        );
+
+        clearChatOverlay.setVisible(false);
     }
 
     @FXML
     private void onRenameChatClick() {
         hideDropdownMenu();
 
-        TextInputDialog dialog = new TextInputDialog(selectedChat.getName());
-        dialog.setTitle("Rename chat");
-        dialog.setHeaderText(null);
-        dialog.setContentText("New chat name:");
-
-        Optional<String> result = dialog.showAndWait();
-
-        if (result.isEmpty()) {
+        if (selectedChat == null) {
             return;
         }
 
-        String newName = result.get().trim();
+        renameChatNameField.setText(selectedChat.getName());
 
-        if (newName.isEmpty() || newName.equals(selectedChat.getName())) {
+        renameChatErrorLabel.setText("");
+        renameChatErrorLabel.setVisible(false);
+        renameChatErrorLabel.setManaged(false);
+
+        renameChatOverlay.setVisible(true);
+        renameChatOverlay.toFront();
+
+        renameChatNameField.requestFocus();
+        renameChatNameField.selectAll();
+    }
+
+    @FXML
+    private void onCancelRenameChatClick() {
+        renameChatOverlay.setVisible(false);
+
+        renameChatNameField.clear();
+
+        renameChatErrorLabel.setText("");
+        renameChatErrorLabel.setVisible(false);
+        renameChatErrorLabel.setManaged(false);
+    }
+
+    @FXML
+    private void onConfirmRenameChatClick() {
+        if (selectedChat == null) {
+            return;
+        }
+
+        String newName = renameChatNameField.getText().trim();
+
+        if (newName.isEmpty()) {
+            showRenameChatError("Please enter chat name.");
+            return;
+        }
+
+        if (newName.equals(selectedChat.getName())) {
+            renameChatOverlay.setVisible(false);
             return;
         }
 
@@ -253,38 +321,57 @@ public class MessengerController {
 
         openChat(selectedChat);
         contactsListView.refresh();
+
+        renameChatOverlay.setVisible(false);
+        renameChatNameField.clear();
+    }
+
+    private void showRenameChatError(String message) {
+        renameChatErrorLabel.setText(message);
+        renameChatErrorLabel.setVisible(true);
+        renameChatErrorLabel.setManaged(true);
     }
 
     @FXML
     private void onDeleteChatClick() {
         hideDropdownMenu();
 
-        if (model.getChats().size() <= 1) {
-            showMessage("Cannot delete chat", "You cannot delete the last chat.");
+        if (selectedChat == null) {
             return;
         }
 
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Delete chat");
-        alert.setHeaderText(null);
-        alert.setContentText("Delete chat with " + selectedChat.getName() + "?");
+        deleteChatOverlay.setVisible(true);
+        deleteChatOverlay.toFront();
+    }
 
-        Optional<ButtonType> result = alert.showAndWait();
+    @FXML
+    private void onCancelDeleteChatClick() {
+        deleteChatOverlay.setVisible(false);
+    }
 
-        if (result.isEmpty() || result.get() != ButtonType.OK) {
+    @FXML
+    private void onConfirmDeleteChatClick() {
+        if (selectedChat == null) {
+            deleteChatOverlay.setVisible(false);
             return;
         }
 
-        int oldIndex = contactsListView.getSelectionModel().getSelectedIndex();
-        oldIndex = Math.max(oldIndex, 0);
+        Chat chatToDelete = selectedChat;
 
-        model.deleteChat(selectedChat);
+        model.deleteChat(chatToDelete);
 
-        int newIndex = Math.min(oldIndex, model.getChats().size() - 1);
+        selectedChat = null;
 
-        selectedChat = model.getChats().get(newIndex);
-        contactsListView.getSelectionModel().select(selectedChat);
-        openChat(selectedChat);
+        messagesListView.setItems(null);
+        chatTitleLabel.setText("");
+
+        deleteChatOverlay.setVisible(false);
+
+        if (!contactsListView.getItems().isEmpty()) {
+            contactsListView.getSelectionModel().selectFirst();
+            selectedChat = contactsListView.getSelectionModel().getSelectedItem();
+            openChat(selectedChat);
+        }
     }
 
     @FXML

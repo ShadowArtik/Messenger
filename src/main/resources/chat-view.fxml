@@ -134,6 +134,124 @@
 
             </StackPane>
 
+            <StackPane fx:id="renameChatOverlay"
+                       visible="false"
+                       styleClass="modal-overlay">
+
+                <VBox spacing="14"
+                      alignment="CENTER_LEFT"
+                      prefWidth="380"
+                      maxWidth="380"
+                      prefHeight="245"
+                      maxHeight="245"
+                      styleClass="create-chat-dialog">
+
+                    <Label text="Rename chat"
+                           styleClass="dialog-title"/>
+
+                    <Label text="Enter a new name for this chat"
+                           styleClass="dialog-subtitle"/>
+
+                    <TextField fx:id="renameChatNameField"
+                               promptText="Chat name"
+                               styleClass="dialog-input"/>
+
+                    <Label fx:id="renameChatErrorLabel"
+                           text=""
+                           visible="false"
+                           managed="false"
+                           styleClass="dialog-error"/>
+
+                    <HBox alignment="CENTER_RIGHT"
+                          spacing="10">
+
+                        <Button text="Cancel"
+                                onAction="#onCancelRenameChatClick"
+                                styleClass="secondary-button"/>
+
+                        <Button text="Save"
+                                onAction="#onConfirmRenameChatClick"
+                                styleClass="primary-button"/>
+                    </HBox>
+
+                </VBox>
+
+            </StackPane>
+
+            <StackPane fx:id="deleteChatOverlay"
+                       visible="false"
+                       styleClass="modal-overlay">
+
+                <VBox spacing="14"
+                      alignment="CENTER_LEFT"
+                      prefWidth="380"
+                      maxWidth="380"
+                      prefHeight="220"
+                      maxHeight="220"
+                      styleClass="create-chat-dialog">
+
+                    <Label text="Delete chat"
+                           styleClass="dialog-title"/>
+
+                    <Label text="This chat will be removed from your chat list."
+                           styleClass="dialog-subtitle"/>
+
+                    <Label text="This action cannot be undone."
+                           styleClass="dialog-error"/>
+
+                    <HBox alignment="CENTER_RIGHT"
+                          spacing="10">
+
+                        <Button text="Cancel"
+                                onAction="#onCancelDeleteChatClick"
+                                styleClass="secondary-button"/>
+
+                        <Button text="Delete"
+                                onAction="#onConfirmDeleteChatClick"
+                                styleClass="danger-button"/>
+                    </HBox>
+
+                </VBox>
+
+            </StackPane>
+
+            <StackPane fx:id="clearChatOverlay"
+                       visible="false"
+                       styleClass="modal-overlay">
+
+                <VBox spacing="14"
+                      alignment="CENTER_LEFT"
+                      prefWidth="380"
+                      maxWidth="380"
+                      prefHeight="220"
+                      maxHeight="220"
+                      styleClass="create-chat-dialog">
+
+                    <Label text="Clear chat"
+                           styleClass="dialog-title"/>
+
+                    <Label text="All messages in this chat will be deleted."
+                           styleClass="dialog-subtitle"/>
+
+                    <Label text="This action cannot be undone."
+                           styleClass="dialog-error"/>
+
+                    <HBox alignment="CENTER_RIGHT"
+                          spacing="10">
+
+                        <Button text="Cancel"
+                                onAction="#onCancelClearChatClick"
+                                styleClass="secondary-button"/>
+
+                        <Button text="Clear"
+                                onAction="#onConfirmClearChatClick"
+                                styleClass="danger-button"/>
+                    </HBox>
+
+                </VBox>
+
+            </StackPane>
+
         </StackPane>
     </center>
 

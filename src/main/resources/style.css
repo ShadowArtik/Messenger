@@ -407,3 +407,19 @@
 .secondary-button:hover {
     -fx-background-color: #4A4D52;
 }
+
+.danger-button {
+    -fx-background-color: #E5484D;
+    -fx-background-radius: 18;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 9 18;
+}
+
+.danger-button:hover {
+    -fx-background-color: #F2555A;
+}
+
+.danger-button:pressed {
+    -fx-background-color: #C93C40;
+}
