@@ -67,29 +67,6 @@
                 </HBox>
             </VBox>
 
-            <VBox fx:id="dropdownMenu"
-                  visible="false"
-                  managed="false"
-                  prefWidth="130"
-                  maxWidth="130"
-                  styleClass="dropdown-menu"
-                  StackPane.alignment="TOP_LEFT"
-                  translateX="190"
-                  translateY="55">
-
-                <Button text="Clear chat"
-                        onAction="#onClearChatClick"
-                        styleClass="dropdown-item"/>
-
-                <Button text="Rename"
-                        onAction="#onRenameChatClick"
-                        styleClass="dropdown-item"/>
-
-                <Button text="Delete chat"
-                        onAction="#onDeleteChatClick"
-                        styleClass="dropdown-item"/>
-            </VBox>
-
             <StackPane fx:id="createChatOverlay"
                        visible="false"
                        styleClass="modal-overlay">

@@ -176,9 +176,9 @@ public class MessengerModel {
         chatService.deleteChat(chat.getId());
     }
 
-    public void clearChat(Chat chat) {
+    public Chat clearChat(Chat chat) {
         if (chat == null) {
-            return;
+            return null;
         }
 
         ObservableList<Message> messages = chatMessages.get(chat.getId());
@@ -188,6 +188,25 @@ public class MessengerModel {
         }
 
         messageService.clearChat(chat.getId());
+
+        Chat updatedChat = new Chat(
+                chat.getId(),
+                chat.getName(),
+                chat.getType(),
+                null,
+                null
+        );
+
+        int index = chats.indexOf(chat);
+
+        if (index != -1) {
+            chats.set(index, updatedChat);
+        }
+
+        chatMessages.remove(chat.getId());
+        chatMessages.put(updatedChat.getId(), messages);
+
+        return updatedChat;
     }
 
     public ObservableList<Chat> getChats() {
@@ -202,12 +221,18 @@ public class MessengerModel {
         return chatMessages.get(chat.getId());
     }
 
-    public void addMessage(Chat chat, Message message) {
+    public Chat addMessage(Chat chat, Message message) {
         if (chat == null) {
-            return;
+            return null;
         }
 
-        chatMessages.get(chat.getId()).add(message);
+        ObservableList<Message> messages = chatMessages.get(chat.getId());
+
+        if (messages == null) {
+            return null;
+        }
+
+        messages.add(message);
 
         messageService.saveMessage(
                 chat.getId(),
@@ -215,17 +240,27 @@ public class MessengerModel {
                 message
         );
 
-        chatService.updateChatActivity(chat.getId());
+        updateChatAfterNewMessage(
+                chat,
+                message.getText(),
+                message.getFormattedTime()
+        );
 
-        moveChatToTop(chat);
+        return chats.get(0);
     }
 
-    public void addBotMessage(Chat chat, Message message) {
+    public Chat addBotMessage(Chat chat, Message message) {
         if (chat == null || helperBotUser == null) {
-            return;
+            return null;
         }
 
-        chatMessages.get(chat.getId()).add(message);
+        ObservableList<Message> messages = chatMessages.get(chat.getId());
+
+        if (messages == null) {
+            return null;
+        }
+
+        messages.add(message);
 
         messageService.saveMessage(
                 chat.getId(),
@@ -233,8 +268,39 @@ public class MessengerModel {
                 message
         );
 
-        chatService.updateChatActivity(chat.getId());
-        moveChatToTop(chat);
+        updateChatAfterNewMessage(
+                chat,
+                message.getText(),
+                message.getFormattedTime()
+        );
+
+        return chats.get(0);
+    }
+
+    private void updateChatAfterNewMessage(Chat chat, String lastMessageText, String lastMessageTime) {
+        if (chat == null) {
+            return;
+        }
+
+        int index = chats.indexOf(chat);
+
+        if (index == -1) {
+            return;
+        }
+
+        Chat updatedChat = new Chat(
+                chat.getId(),
+                chat.getName(),
+                chat.getType(),
+                lastMessageText,
+                lastMessageTime
+        );
+
+        chats.remove(index);
+        chats.add(0, updatedChat);
+
+        ObservableList<Message> messages = chatMessages.remove(chat.getId());
+        chatMessages.put(updatedChat.getId(), messages);
     }
 
     public Message generateBotResponse(String userText) {

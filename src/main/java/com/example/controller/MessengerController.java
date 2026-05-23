@@ -14,9 +14,25 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import java.util.Optional;
 import javafx.scene.control.Label;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
+import javafx.geometry.Pos;
+import javafx.geometry.Side;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import com.example.model.Session;
 import com.example.model.Chat;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.geometry.Side;
+import javafx.scene.control.OverrunStyle;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.Priority;
+
 
 
 public class MessengerController {
@@ -45,9 +61,8 @@ public class MessengerController {
     @FXML private StackPane chatAvatar;
     @FXML private TextField messageTextField;
     @FXML private Button menuButton;
-    @FXML private VBox dropdownMenu;
-    private ContextMenu chatMenu;
 
+    private ContextMenu chatContextMenu;
     private MessengerModel model;
     private Chat selectedChat;
 
@@ -56,7 +71,9 @@ public class MessengerController {
         model = new MessengerModel();
 
         contactsListView.setItems(model.getChats());
+
         contactsListView.setCellFactory(listView -> new ListCell<>() {
+
             @Override
             protected void updateItem(Chat chat, boolean empty) {
                 super.updateItem(chat, empty);
@@ -67,39 +84,76 @@ public class MessengerController {
                     return;
                 }
 
-                String name = chat.getName();
+                HBox root = new HBox(10);
+                root.setAlignment(Pos.CENTER_LEFT);
 
-                StackPane avatar = createAvatar(name, 18);
+                StackPane avatar = createAvatar(chat.getName(), 20);
 
-                Label nameLabel = new Label(name);
-                nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+                VBox textBox = new VBox(3);
+                textBox.setMaxWidth(130);
 
-                HBox nameBox = new HBox(6, nameLabel);
-                nameBox.setAlignment(Pos.CENTER_LEFT);
+                HBox topRow = new HBox(6);
+                topRow.setAlignment(Pos.CENTER_LEFT);
+
+                Label nameLabel = new Label(chat.getName());
+                nameLabel.setStyle(
+                        "-fx-text-fill: white;" +
+                                "-fx-font-size: 14px;" +
+                                "-fx-font-weight: bold;"
+                );
+
+                nameLabel.setMaxWidth(80);
+                nameLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+
+                topRow.getChildren().add(nameLabel);
 
                 if (model.isBotChat(chat)) {
-                    Label botBadge = createBotBadge();
-                    nameBox.getChildren().add(botBadge);
+                    Label botBadge = new Label("BOT");
+                    botBadge.getStyleClass().add("bot-badge");
+                    topRow.getChildren().add(botBadge);
                 }
 
-                HBox container = new HBox(10, avatar, nameBox);
-                container.setAlignment(Pos.CENTER_LEFT);
+                HBox bottomRow = new HBox(6);
+                bottomRow.setAlignment(Pos.CENTER_LEFT);
+
+                Label lastMessageLabel = new Label();
+
+                if (chat.getLastMessageText() == null || chat.getLastMessageText().isBlank()) {
+                    lastMessageLabel.setText("No messages yet");
+                } else {
+                    lastMessageLabel.setText(chat.getLastMessageText());
+                }
+
+                lastMessageLabel.setStyle(
+                        "-fx-text-fill: #B8BDC7;" +
+                                "-fx-font-size: 12px;"
+                );
+
+                lastMessageLabel.setMaxWidth(90);
+                lastMessageLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+
+                Label lastMessageTimeLabel = new Label();
+
+                if (chat.getLastMessageTime() != null && !chat.getLastMessageTime().isBlank()) {
+                    lastMessageTimeLabel.setText(chat.getLastMessageTime());
+                }
+
+                lastMessageTimeLabel.setStyle(
+                        "-fx-text-fill: #8A8F99;" +
+                                "-fx-font-size: 11px;"
+                );
+
+                bottomRow.getChildren().addAll(
+                        lastMessageLabel,
+                        lastMessageTimeLabel
+                );
+
+                textBox.getChildren().addAll(topRow, bottomRow);
+
+                root.getChildren().addAll(avatar, textBox);
 
                 setText(null);
-                setGraphic(container);
-
-                chatMenu = new ContextMenu();
-
-                MenuItem clearItem = new MenuItem("Clear chat");
-                clearItem.setOnAction(event -> onClearChatClick());
-
-                MenuItem renameItem = new MenuItem("Rename");
-                renameItem.setOnAction(event -> onRenameChatClick());
-
-                MenuItem deleteItem = new MenuItem("Delete chat");
-                deleteItem.setOnAction(event -> onDeleteChatClick());
-
-                chatMenu.getItems().addAll(clearItem, renameItem, deleteItem);
+                setGraphic(root);
             }
         });
 
@@ -153,12 +207,13 @@ public class MessengerController {
                     if (newValue != null) {
                         selectedChat = newValue;
                         openChat(selectedChat);
-                        hideDropdownMenu();
                     }
                 }
         );
 
         messageTextField.setOnAction(event -> onSendButtonClick());
+
+        setupChatContextMenu();
     }
 
     private void openChat(Chat chat) {
@@ -225,16 +280,19 @@ public class MessengerController {
 
     @FXML
     private void onMenuButtonClick() {
-        if (chatMenu.isShowing()) {
-            chatMenu.hide();
+        if (selectedChat == null) {
+            return;
+        }
+
+        if (chatContextMenu.isShowing()) {
+            chatContextMenu.hide();
         } else {
-            chatMenu.show(menuButton, javafx.geometry.Side.BOTTOM, 0, 6);
+            chatContextMenu.show(menuButton, Side.BOTTOM, 0, 0);
         }
     }
 
     @FXML
     private void onClearChatClick() {
-        hideDropdownMenu();
 
         if (selectedChat == null) {
             return;
@@ -256,18 +314,25 @@ public class MessengerController {
             return;
         }
 
-        model.clearChat(selectedChat);
+        Chat updatedChat = model.clearChat(selectedChat);
 
-        messagesListView.setItems(
-                model.getMessagesForChat(selectedChat)
-        );
+        if (updatedChat != null) {
+            selectedChat = updatedChat;
+
+            messagesListView.setItems(
+                    model.getMessagesForChat(selectedChat)
+            );
+
+            contactsListView.getSelectionModel().select(selectedChat);
+            contactsListView.refresh();
+            openChat(selectedChat);
+        }
 
         clearChatOverlay.setVisible(false);
     }
 
     @FXML
     private void onRenameChatClick() {
-        hideDropdownMenu();
 
         if (selectedChat == null) {
             return;
@@ -334,7 +399,6 @@ public class MessengerController {
 
     @FXML
     private void onDeleteChatClick() {
-        hideDropdownMenu();
 
         if (selectedChat == null) {
             return;
@@ -376,7 +440,6 @@ public class MessengerController {
 
     @FXML
     private void onCreateChatClick() {
-        hideDropdownMenu();
 
         createChatUsernameField.clear();
 
@@ -454,6 +517,10 @@ public class MessengerController {
 
     @FXML
     private void onSendButtonClick() {
+        if (selectedChat == null) {
+            return;
+        }
+
         String text = messageTextField.getText().trim();
 
         if (text.isEmpty()) {
@@ -465,17 +532,35 @@ public class MessengerController {
                 Session.getCurrentUser().getUsername(),
                 text
         );
-        model.addMessage(selectedChat, userMessage);
+
+        Chat updatedChat = model.addMessage(selectedChat, userMessage);
+
+        if (updatedChat != null) {
+            selectedChat = updatedChat;
+        }
 
         if (model.isBotChat(selectedChat)) {
             Message botMessage = model.generateBotResponse(text);
-            model.addBotMessage(selectedChat, botMessage);
+
+            Chat updatedBotChat = model.addBotMessage(selectedChat, botMessage);
+
+            if (updatedBotChat != null) {
+                selectedChat = updatedBotChat;
+            }
         }
 
+        contactsListView.getSelectionModel().select(selectedChat);
+        openChat(selectedChat);
+
         messageTextField.clear();
-        messagesListView.scrollTo(
-                model.getMessagesForChat(selectedChat).size() - 1
-        );
+
+        if (model.getMessagesForChat(selectedChat) != null &&
+                !model.getMessagesForChat(selectedChat).isEmpty()) {
+
+            messagesListView.scrollTo(
+                    model.getMessagesForChat(selectedChat).size() - 1
+            );
+        }
     }
 
     private void showMessage(String title, String text) {
@@ -486,9 +571,21 @@ public class MessengerController {
         alert.showAndWait();
     }
 
-    private void hideDropdownMenu() {
-        if (chatMenu != null) {
-            chatMenu.hide();
-        }
+    private void setupChatContextMenu() {
+        MenuItem clearChatItem = new MenuItem("Clear chat");
+        MenuItem renameChatItem = new MenuItem("Rename");
+        MenuItem deleteChatItem = new MenuItem("Delete chat");
+
+        clearChatItem.setOnAction(event -> onClearChatClick());
+        renameChatItem.setOnAction(event -> onRenameChatClick());
+        deleteChatItem.setOnAction(event -> onDeleteChatClick());
+
+        chatContextMenu = new ContextMenu(
+                clearChatItem,
+                renameChatItem,
+                deleteChatItem
+        );
+
+        chatContextMenu.getStyleClass().add("chat-context-menu");
     }
 }

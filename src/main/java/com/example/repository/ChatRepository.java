@@ -65,14 +65,28 @@ public class ChatRepository {
         List<Chat> chats = new ArrayList<>();
 
         String sql = """
-            SELECT c.id,
-                   COALESCE(cm.custom_chat_name, c.chat_name) AS chat_name,
-                   c.chat_type
-            FROM chats c
-            JOIN chat_members cm ON c.id = cm.chat_id
-            WHERE cm.user_id = ?
-            ORDER BY c.updated_at DESC, c.id DESC
-            """;
+        SELECT c.id,
+               COALESCE(cm.custom_chat_name, c.chat_name) AS chat_name,
+               c.chat_type,
+               (
+                   SELECT m.text
+                   FROM messages m
+                   WHERE m.chat_id = c.id
+                   ORDER BY m.created_at DESC, m.id DESC
+                   LIMIT 1
+               ) AS last_message_text,
+               (
+                   SELECT TO_CHAR(m.created_at, 'HH24:MI')
+                   FROM messages m
+                   WHERE m.chat_id = c.id
+                   ORDER BY m.created_at DESC, m.id DESC
+                   LIMIT 1
+               ) AS last_message_time
+        FROM chats c
+        JOIN chat_members cm ON c.id = cm.chat_id
+        WHERE cm.user_id = ?
+        ORDER BY c.updated_at DESC, c.id DESC
+        """;
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -85,7 +99,9 @@ public class ChatRepository {
                 chats.add(new Chat(
                         resultSet.getInt("id"),
                         resultSet.getString("chat_name"),
-                        resultSet.getString("chat_type")
+                        resultSet.getString("chat_type"),
+                        resultSet.getString("last_message_text"),
+                        resultSet.getString("last_message_time")
                 ));
             }
 
