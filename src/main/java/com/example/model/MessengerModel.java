@@ -8,8 +8,6 @@ import com.example.service.result.CreateChatResult;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
-
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -282,6 +280,8 @@ public class MessengerModel {
             return;
         }
 
+        chatService.updateChatActivity(chat.getId());
+
         int index = chats.indexOf(chat);
 
         if (index == -1) {
@@ -315,14 +315,5 @@ public class MessengerModel {
         }
 
         return new Message("Bot", response);
-    }
-
-    private void moveChatToTop(Chat chat) {
-        int index = chats.indexOf(chat);
-
-        if (index > 0) {
-            chats.remove(chat);
-            chats.add(0, chat);
-        }
     }
 }

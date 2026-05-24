@@ -1,42 +1,30 @@
 package com.example.controller;
 
+import com.example.model.Chat;
 import com.example.model.Message;
 import com.example.model.MessengerModel;
+import com.example.model.Session;
 import com.example.service.result.CreateChatResponse;
-import com.example.service.result.CreateChatResult;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
+import javafx.geometry.Side;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.OverrunStyle;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import java.util.Optional;
-import javafx.scene.control.Label;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.scene.layout.StackPane;
-import javafx.geometry.Pos;
-import javafx.geometry.Side;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.TextField;
-import com.example.model.Session;
-import com.example.model.Chat;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
-import javafx.geometry.Side;
-import javafx.scene.control.OverrunStyle;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.Priority;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
-
-
 
 public class MessengerController {
 
