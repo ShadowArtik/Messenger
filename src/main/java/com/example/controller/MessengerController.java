@@ -5,6 +5,7 @@ import com.example.model.Message;
 import com.example.model.MessengerModel;
 import com.example.model.Session;
 import com.example.service.result.CreateChatResponse;
+import com.example.network.WebSocketClient;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
@@ -58,9 +59,22 @@ public class MessengerController {
     private ContextMenu chatContextMenu;
     private MessengerModel model;
     private Chat selectedChat;
+    private WebSocketClient webSocketClient;
 
     @FXML
     public void initialize() {
+        webSocketClient = new WebSocketClient();
+
+        webSocketClient.setMessageHandler(messageText -> {
+            System.out.println("Received in controller: " + messageText);
+        });
+
+        webSocketClient.connect(
+                Session.getCurrentUser().getId(),
+                Session.getCurrentUser().getUsername(),
+                Session.getCurrentUser().getDisplayName()
+        );
+
         model = new MessengerModel();
 
         contactsListView.setItems(model.getChats());
@@ -520,6 +534,25 @@ public class MessengerController {
             messageTextField.clear();
             return;
         }
+
+        String jsonMessage = String.format(
+                """
+                {
+                  "chatId": %d,
+                  "senderId": %d,
+                  "senderUsername": "%s",
+                  "senderDisplayName": "%s",
+                  "text": "%s"
+                }
+                """,
+                selectedChat.getId(),
+                Session.getCurrentUser().getId(),
+                Session.getCurrentUser().getUsername(),
+                Session.getCurrentUser().getDisplayName(),
+                text.replace("\"", "\\\"")
+        );
+
+        webSocketClient.sendMessage(jsonMessage);
 
         Message userMessage = new Message(
                 Session.getCurrentUser().getUsername(),
