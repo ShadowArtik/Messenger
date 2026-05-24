@@ -477,3 +477,11 @@
 .danger-button:hover {
     -fx-background-color: #ff6373;
 }
+
+.online-status-dot {
+    -fx-background-color: #3BA55D;
+    -fx-background-radius: 50%;
+    -fx-border-color: #2B2D31;
+    -fx-border-width: 2.5;
+    -fx-border-radius: 50%;
+}

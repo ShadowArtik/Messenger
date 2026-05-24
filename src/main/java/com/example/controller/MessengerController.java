@@ -10,6 +10,7 @@ import com.example.network.dto.IncomingMessage;
 import com.google.gson.Gson;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Scene;
@@ -23,10 +24,9 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 
 public class MessengerController {
@@ -66,6 +66,8 @@ public class MessengerController {
 
     @FXML
     public void initialize() {
+        model = new MessengerModel();
+
         webSocketClient = new WebSocketClient();
 
         webSocketClient.setMessageHandler(this::handleIncomingWebSocketMessage);
@@ -75,8 +77,6 @@ public class MessengerController {
                 Session.getCurrentUser().getUsername(),
                 Session.getCurrentUser().getDisplayName()
         );
-
-        model = new MessengerModel();
 
         contactsListView.setItems(model.getChats());
 
@@ -95,7 +95,7 @@ public class MessengerController {
                 HBox root = new HBox(10);
                 root.setAlignment(Pos.CENTER_LEFT);
 
-                StackPane avatar = createAvatar(chat.getName(), 20);
+                StackPane avatar = createAvatar(chat, 20);
 
                 VBox textBox = new VBox(3);
                 textBox.setMaxWidth(130);
@@ -251,32 +251,76 @@ public class MessengerController {
         }
 
         chatAvatar.getChildren().clear();
-        chatAvatar.getChildren().add(createAvatar(name, 18));
+        chatAvatar.getChildren().add(createAvatar(chat, 20));
     }
 
-    private StackPane createAvatar(String name, double radius) {
-        Circle circle = new Circle(radius);
-        circle.setFill(Color.web(getAvatarColor(name)));
+    private StackPane createAvatar(Chat chat, double radius) {
+        String name = chat.getName();
+
+        StackPane avatar = createBaseAvatar(name, radius);
+
+        if (!model.isBotChat(chat)
+                && chat.getCompanionUserId() != null
+                && model.isUserOnline(chat.getCompanionUserId())) {
+
+            double statusDotSize = Math.max(12, radius * 0.52);
+
+            Region statusDot = new Region();
+            statusDot.setPrefSize(statusDotSize, statusDotSize);
+            statusDot.setMaxSize(statusDotSize, statusDotSize);
+            statusDot.getStyleClass().add("online-status-dot");
+
+            StackPane.setAlignment(statusDot, Pos.BOTTOM_RIGHT);
+            StackPane.setMargin(statusDot, new Insets(0, 0, 0, 0));
+
+            avatar.getChildren().add(statusDot);
+        }
+
+        return avatar;
+    }
+
+    private StackPane createBaseAvatar(String name, double radius) {
+        StackPane avatar = new StackPane();
+
+        avatar.setMinSize(radius * 2, radius * 2);
+        avatar.setPrefSize(radius * 2, radius * 2);
+        avatar.setMaxSize(radius * 2, radius * 2);
+
+        avatar.setStyle(
+                "-fx-background-color: " + getAvatarColor(name) + ";" +
+                        "-fx-background-radius: " + radius + ";"
+        );
 
         Label letter = new Label(name.substring(0, 1).toUpperCase());
-        letter.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        letter.setStyle(
+                "-fx-text-fill: white;" +
+                        "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;"
+        );
 
-        return new StackPane(circle, letter);
+        avatar.getChildren().add(letter);
+
+        return avatar;
     }
 
     private String getAvatarColor(String name) {
+        if (name == null || name.isBlank()) {
+            return "#5B9DFF";
+        }
+
         String[] colors = {
                 "#5B9DFF",
-                "#FF6B81",
+                "#FF5B81",
                 "#7D5FFF",
                 "#2ED573",
                 "#FFA502",
                 "#FF4757",
-                "#1DD1A1",
-                "#A55EEA"
+                "#1E90FF",
+                "#9C88FF"
         };
 
         int index = Math.abs(name.hashCode()) % colors.length;
+
         return colors[index];
     }
 
@@ -584,7 +628,56 @@ public class MessengerController {
         try {
             IncomingMessage incoming = gson.fromJson(json, IncomingMessage.class);
 
-            if (incoming == null || !incoming.isPrivateMessage()) {
+            if (incoming == null) {
+                return;
+            }
+
+            if (incoming.isOnlineUsers()) {
+                model.setOnlineUsers(
+                        incoming.getUserIds(),
+                        Session.getCurrentUser().getId()
+                );
+
+                contactsListView.refresh();
+
+                if (selectedChat != null) {
+                    updateChatHeader(selectedChat);
+                }
+
+                return;
+            }
+
+            if (incoming.isUserOnline()) {
+                int userId = incoming.getUserId();
+
+                if (userId != Session.getCurrentUser().getId()) {
+                    model.setUserOnline(userId);
+                    contactsListView.refresh();
+
+                    if (selectedChat != null) {
+                        updateChatHeader(selectedChat);
+                    }
+                }
+
+                return;
+            }
+
+            if (incoming.isUserOffline()) {
+                int userId = incoming.getUserId();
+
+                if (userId != Session.getCurrentUser().getId()) {
+                    model.setUserOffline(userId);
+                    contactsListView.refresh();
+
+                    if (selectedChat != null) {
+                        updateChatHeader(selectedChat);
+                    }
+                }
+
+                return;
+            }
+
+            if (!incoming.isPrivateMessage()) {
                 return;
             }
 
@@ -599,9 +692,11 @@ public class MessengerController {
                     selectedChat != null ? selectedChat.getId() : -1;
 
             Chat incomingChat = model.findChatById(chatId);
+            boolean messageLoadedByReload = false;
 
             if (incomingChat == null) {
                 model.reloadChats();
+                messageLoadedByReload = true;
 
                 incomingChat = model.findChatById(chatId);
 
@@ -610,13 +705,17 @@ public class MessengerController {
                 }
             }
 
-            Message incomingMessage = new Message(
-                    incoming.getSenderUsername(),
-                    incoming.getText()
-            );
+            Chat updatedIncomingChat = incomingChat;
 
-            Chat updatedIncomingChat =
-                    model.addIncomingMessage(incomingChat, incomingMessage);
+            if (!messageLoadedByReload) {
+                Message incomingMessage = new Message(
+                        incoming.getSenderUsername(),
+                        incoming.getText()
+                );
+
+                updatedIncomingChat =
+                        model.addIncomingMessage(incomingChat, incomingMessage);
+            }
 
             contactsListView.refresh();
 
@@ -704,6 +803,10 @@ public class MessengerController {
 
     @FXML
     private void onConfirmLogoutClick() {
+        if (webSocketClient != null) {
+            webSocketClient.close();
+        }
+
         Session.clear();
         openLoginScreen();
     }

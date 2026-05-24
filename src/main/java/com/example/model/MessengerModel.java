@@ -8,9 +8,11 @@ import com.example.service.result.CreateChatResult;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MessengerModel {
 
@@ -20,12 +22,14 @@ public class MessengerModel {
     private final MessageService messageService;
     private final ChatService chatService;
     private final UserService userService;
+    private final Set<Integer> onlineUserIds;
 
     private User helperBotUser;
 
     public MessengerModel() {
         chats = FXCollections.observableArrayList();
         chatMessages = new HashMap<>();
+        onlineUserIds = new HashSet<>();
 
         messageService = new MessageService();
         chatService = new ChatService();
@@ -369,5 +373,31 @@ public class MessengerModel {
         chats.clear();
         chatMessages.clear();
         loadChats();
+    }
+
+    public void setUserOnline(int userId) {
+        onlineUserIds.add(userId);
+    }
+
+    public void setOnlineUsers(List<Integer> userIds, int currentUserId) {
+        onlineUserIds.clear();
+
+        if (userIds == null) {
+            return;
+        }
+
+        for (Integer userId : userIds) {
+            if (userId != null && userId != currentUserId) {
+                onlineUserIds.add(userId);
+            }
+        }
+    }
+
+    public void setUserOffline(int userId) {
+        onlineUserIds.remove(userId);
+    }
+
+    public boolean isUserOnline(Integer userId) {
+        return userId != null && onlineUserIds.contains(userId);
     }
 }

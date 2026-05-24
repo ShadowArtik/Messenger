@@ -52,6 +52,8 @@ public class WebSocketClient {
                             ) {
                                 String message = data.toString();
 
+                                System.out.println("Message from server: " + message);
+
                                 if (messageHandler != null) {
                                     Platform.runLater(() -> messageHandler.accept(message));
                                 }
@@ -100,7 +102,8 @@ public class WebSocketClient {
 
     public void close() {
         if (webSocket != null) {
-            webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Client closed");
+            webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Client logged out");
+            webSocket = null;
         }
     }
 }
