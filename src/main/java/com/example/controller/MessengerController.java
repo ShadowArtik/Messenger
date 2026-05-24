@@ -28,7 +28,6 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
-import javafx.application.Platform;
 
 public class MessengerController {
 
@@ -69,9 +68,7 @@ public class MessengerController {
     public void initialize() {
         webSocketClient = new WebSocketClient();
 
-        webSocketClient.setMessageHandler(messageText -> {
-            Platform.runLater(() -> handleIncomingWebSocketMessage(messageText));
-        });
+        webSocketClient.setMessageHandler(this::handleIncomingWebSocketMessage);
 
         webSocketClient.connect(
                 Session.getCurrentUser().getId(),
@@ -571,8 +568,6 @@ public class MessengerController {
                         Session.getCurrentUser().getDisplayName(),
                         text
                 );
-            } else {
-                System.out.println("Companion id: " + selectedChat.getCompanionUserId());
             }
         }
 

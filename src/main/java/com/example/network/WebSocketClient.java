@@ -52,8 +52,6 @@ public class WebSocketClient {
                             ) {
                                 String message = data.toString();
 
-                                System.out.println("Message from server: " + message);
-
                                 if (messageHandler != null) {
                                     Platform.runLater(() -> messageHandler.accept(message));
                                 }
