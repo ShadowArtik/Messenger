@@ -1,5 +1,8 @@
 package com.example.network;
 
+import com.example.network.dto.ConnectMessage;
+import com.example.network.dto.PrivateMessage;
+import com.google.gson.Gson;
 import javafx.application.Platform;
 
 import java.net.URI;
@@ -12,6 +15,8 @@ public class WebSocketClient {
 
     private WebSocket webSocket;
     private Consumer<String> messageHandler;
+
+    private final Gson gson = new Gson();
 
     public void setMessageHandler(Consumer<String> messageHandler) {
         this.messageHandler = messageHandler;
@@ -31,21 +36,11 @@ public class WebSocketClient {
 
                                 System.out.println("Connected to WebSocket server");
 
-                                String connectMessage = String.format(
-                                        """
-                                        {
-                                          "type": "CONNECT",
-                                          "userId": %d,
-                                          "username": "%s",
-                                          "displayName": "%s"
-                                        }
-                                        """,
-                                        userId,
-                                        username,
-                                        displayName
-                                );
+                                ConnectMessage connectMessage =
+                                        new ConnectMessage(userId, username, displayName);
 
-                                webSocket.sendText(connectMessage, true);
+                                sendMessage(gson.toJson(connectMessage));
+
                                 webSocket.request(1);
                             }
 
@@ -84,39 +79,16 @@ public class WebSocketClient {
             String senderDisplayName,
             String text
     ) {
-        String json = String.format(
-                """
-                {
-                  "type": "PRIVATE_MESSAGE",
-                  "chatId": %d,
-                  "senderId": %d,
-                  "receiverId": %d,
-                  "senderUsername": "%s",
-                  "senderDisplayName": "%s",
-                  "text": "%s"
-                }
-                """,
+        PrivateMessage privateMessage = new PrivateMessage(
                 chatId,
                 senderId,
                 receiverId,
-                escapeJson(senderUsername),
-                escapeJson(senderDisplayName),
-                escapeJson(text)
+                senderUsername,
+                senderDisplayName,
+                text
         );
 
-        sendMessage(json);
-    }
-
-    private String escapeJson(String text) {
-        if (text == null) {
-            return "";
-        }
-
-        return text
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "");
+        sendMessage(gson.toJson(privateMessage));
     }
 
     public void sendMessage(String text) {
