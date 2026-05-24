@@ -7,17 +7,36 @@ public class Chat {
     private final String type;
     private final String lastMessageText;
     private final String lastMessageTime;
+    private final Integer companionUserId;
 
     public Chat(int id, String name, String type) {
-        this(id, name, type, null, null);
+        this(id, name, type, null, null, null);
     }
 
-    public Chat(int id, String name, String type, String lastMessageText, String lastMessageTime) {
+    public Chat(
+            int id,
+            String name,
+            String type,
+            String lastMessageText,
+            String lastMessageTime
+    ) {
+        this(id, name, type, lastMessageText, lastMessageTime, null);
+    }
+
+    public Chat(
+            int id,
+            String name,
+            String type,
+            String lastMessageText,
+            String lastMessageTime,
+            Integer companionUserId
+    ) {
         this.id = id;
         this.name = name;
         this.type = type;
         this.lastMessageText = lastMessageText;
         this.lastMessageTime = lastMessageTime;
+        this.companionUserId = companionUserId;
     }
 
     public int getId() {
@@ -40,6 +59,10 @@ public class Chat {
         return lastMessageTime;
     }
 
+    public Integer getCompanionUserId() {
+        return companionUserId;
+    }
+
     public boolean isBot() {
         return "BOT".equalsIgnoreCase(type);
     }
@@ -48,4 +71,5 @@ public class Chat {
     public String toString() {
         return name;
     }
+
 }

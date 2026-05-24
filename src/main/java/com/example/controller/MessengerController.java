@@ -26,6 +26,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.application.Platform;
 
 public class MessengerController {
 
@@ -66,7 +67,7 @@ public class MessengerController {
         webSocketClient = new WebSocketClient();
 
         webSocketClient.setMessageHandler(messageText -> {
-            System.out.println("Received in controller: " + messageText);
+            Platform.runLater(() -> handleIncomingWebSocketMessage(messageText));
         });
 
         webSocketClient.connect(
@@ -535,25 +536,6 @@ public class MessengerController {
             return;
         }
 
-        String jsonMessage = String.format(
-                """
-                {
-                  "chatId": %d,
-                  "senderId": %d,
-                  "senderUsername": "%s",
-                  "senderDisplayName": "%s",
-                  "text": "%s"
-                }
-                """,
-                selectedChat.getId(),
-                Session.getCurrentUser().getId(),
-                Session.getCurrentUser().getUsername(),
-                Session.getCurrentUser().getDisplayName(),
-                text.replace("\"", "\\\"")
-        );
-
-        webSocketClient.sendMessage(jsonMessage);
-
         Message userMessage = new Message(
                 Session.getCurrentUser().getUsername(),
                 text
@@ -563,30 +545,163 @@ public class MessengerController {
 
         if (updatedChat != null) {
             selectedChat = updatedChat;
+            contactsListView.getSelectionModel().select(selectedChat);
         }
 
         if (model.isBotChat(selectedChat)) {
             Message botMessage = model.generateBotResponse(text);
-
             Chat updatedBotChat = model.addBotMessage(selectedChat, botMessage);
 
             if (updatedBotChat != null) {
                 selectedChat = updatedBotChat;
+                contactsListView.getSelectionModel().select(selectedChat);
+            }
+        } else {
+            Integer companionUserId = selectedChat.getCompanionUserId();
+
+            if (companionUserId != null) {
+                webSocketClient.sendPrivateMessage(
+                        selectedChat.getId(),
+                        Session.getCurrentUser().getId(),
+                        companionUserId,
+                        Session.getCurrentUser().getUsername(),
+                        Session.getCurrentUser().getDisplayName(),
+                        text
+                );
+            } else {
+                System.out.println("Companion id: " + selectedChat.getCompanionUserId());
             }
         }
 
-        contactsListView.getSelectionModel().select(selectedChat);
-        openChat(selectedChat);
+        contactsListView.refresh();
 
         messageTextField.clear();
 
-        if (model.getMessagesForChat(selectedChat) != null &&
-                !model.getMessagesForChat(selectedChat).isEmpty()) {
+        messagesListView.scrollTo(
+                model.getMessagesForChat(selectedChat).size() - 1
+        );
+    }
 
-            messagesListView.scrollTo(
-                    model.getMessagesForChat(selectedChat).size() - 1
-            );
+    private void handleIncomingWebSocketMessage(String json) {
+        try {
+            if (!json.contains("\"type\":\"PRIVATE_MESSAGE\"")
+                    && !json.contains("\"type\": \"PRIVATE_MESSAGE\"")) {
+                return;
+            }
+
+            int chatId = extractInt(json, "chatId");
+            int senderId = extractInt(json, "senderId");
+            String senderUsername = extractString(json, "senderUsername");
+            String text = extractString(json, "text");
+
+            if (senderId == Session.getCurrentUser().getId()) {
+                return;
+            }
+
+            Platform.runLater(() -> {
+                try {
+                    int previouslySelectedChatId =
+                            selectedChat != null ? selectedChat.getId() : -1;
+
+                    Chat incomingChat = model.findChatById(chatId);
+
+                    if (incomingChat == null) {
+                        model.reloadChats();
+                        incomingChat = model.findChatById(chatId);
+
+                        if (incomingChat == null) {
+                            return;
+                        }
+                    }
+
+                    Message incomingMessage = new Message(senderUsername, text);
+
+                    Chat updatedIncomingChat =
+                            model.addIncomingMessage(incomingChat, incomingMessage);
+
+                    contactsListView.refresh();
+
+                    Chat selectedAfterUpdate =
+                            model.findChatById(previouslySelectedChatId);
+
+                    if (selectedAfterUpdate != null) {
+                        selectedChat = selectedAfterUpdate;
+                        contactsListView.getSelectionModel().select(selectedChat);
+
+                        if (previouslySelectedChatId == chatId) {
+                            messagesListView.setItems(
+                                    model.getMessagesForChat(selectedChat)
+                            );
+
+                            messagesListView.scrollTo(
+                                    model.getMessagesForChat(selectedChat).size() - 1
+                            );
+                        }
+
+                        return;
+                    }
+
+                    if (updatedIncomingChat != null && previouslySelectedChatId == chatId) {
+                        selectedChat = updatedIncomingChat;
+                        contactsListView.getSelectionModel().select(selectedChat);
+
+                        messagesListView.setItems(
+                                model.getMessagesForChat(selectedChat)
+                        );
+
+                        messagesListView.scrollTo(
+                                model.getMessagesForChat(selectedChat).size() - 1
+                        );
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private String extractString(String json, String key) {
+        String pattern = "\"" + key + "\"";
+        int keyIndex = json.indexOf(pattern);
+
+        if (keyIndex == -1) {
+            return "";
+        }
+
+        int colonIndex = json.indexOf(":", keyIndex);
+        int firstQuoteIndex = json.indexOf("\"", colonIndex + 1);
+        int secondQuoteIndex = json.indexOf("\"", firstQuoteIndex + 1);
+
+        if (firstQuoteIndex == -1 || secondQuoteIndex == -1) {
+            return "";
+        }
+
+        return json.substring(firstQuoteIndex + 1, secondQuoteIndex);
+    }
+
+    private int extractInt(String json, String key) {
+        String pattern = "\"" + key + "\"";
+        int keyIndex = json.indexOf(pattern);
+
+        if (keyIndex == -1) {
+            return -1;
+        }
+
+        int colonIndex = json.indexOf(":", keyIndex);
+        int commaIndex = json.indexOf(",", colonIndex + 1);
+        int endIndex = commaIndex == -1 ? json.indexOf("}", colonIndex + 1) : commaIndex;
+
+        if (endIndex == -1) {
+            return -1;
+        }
+
+        String numberText = json.substring(colonIndex + 1, endIndex).trim();
+
+        return Integer.parseInt(numberText);
     }
 
     private void showMessage(String title, String text) {

@@ -20,6 +20,7 @@ public class MessengerModel {
     private final MessageService messageService;
     private final ChatService chatService;
     private final UserService userService;
+
     private User helperBotUser;
 
     public MessengerModel() {
@@ -29,6 +30,7 @@ public class MessengerModel {
         messageService = new MessageService();
         chatService = new ChatService();
         userService = new UserService();
+
         helperBotUser = userService.createSystemUserIfNotExists(
                 "helper_bot",
                 "Helper"
@@ -58,7 +60,7 @@ public class MessengerModel {
     }
 
     private void addChatToMemory(Chat chat) {
-        if (chatMessages.containsKey(chat.getId())) {
+        if (chat == null || chatMessages.containsKey(chat.getId())) {
             return;
         }
 
@@ -73,7 +75,6 @@ public class MessengerModel {
     }
 
     public CreateChatResponse addChat(String username) {
-
         User targetUser = userService.findByUsername(username);
 
         if (targetUser == null) {
@@ -91,10 +92,8 @@ public class MessengerModel {
         }
 
         for (Chat existingChat : chats) {
-            if (existingChat.getName()
-                    .equalsIgnoreCase(
-                            targetUser.getDisplayName()
-                    )) {
+            if (existingChat.getCompanionUserId() != null
+                    && existingChat.getCompanionUserId().equals(targetUser.getId())) {
 
                 return new CreateChatResponse(
                         CreateChatResult.CHAT_ALREADY_EXISTS,
@@ -136,8 +135,7 @@ public class MessengerModel {
         }
 
         for (Chat existingChat : chats) {
-            if (existingChat.getName()
-                    .equalsIgnoreCase(newName)
+            if (existingChat.getName().equalsIgnoreCase(newName)
                     && existingChat.getId() != chat.getId()) {
                 return;
             }
@@ -149,12 +147,19 @@ public class MessengerModel {
             return;
         }
 
-        chatService.renameChat(chat.getId(), Session.getCurrentUser().getId(), newName);
+        chatService.renameChat(
+                chat.getId(),
+                Session.getCurrentUser().getId(),
+                newName
+        );
 
         Chat renamedChat = new Chat(
                 chat.getId(),
                 newName,
-                chat.getType()
+                chat.getType(),
+                chat.getLastMessageText(),
+                chat.getLastMessageTime(),
+                chat.getCompanionUserId()
         );
 
         chats.set(index, renamedChat);
@@ -183,6 +188,8 @@ public class MessengerModel {
 
         if (messages != null) {
             messages.clear();
+        } else {
+            messages = FXCollections.observableArrayList();
         }
 
         messageService.clearChat(chat.getId());
@@ -192,7 +199,8 @@ public class MessengerModel {
                 chat.getName(),
                 chat.getType(),
                 null,
-                null
+                null,
+                chat.getCompanionUserId()
         );
 
         int index = chats.indexOf(chat);
@@ -216,11 +224,17 @@ public class MessengerModel {
             return FXCollections.observableArrayList();
         }
 
-        return chatMessages.get(chat.getId());
+        ObservableList<Message> messages = chatMessages.get(chat.getId());
+
+        if (messages == null) {
+            return FXCollections.observableArrayList();
+        }
+
+        return messages;
     }
 
     public Chat addMessage(Chat chat, Message message) {
-        if (chat == null) {
+        if (chat == null || message == null) {
             return null;
         }
 
@@ -238,17 +252,15 @@ public class MessengerModel {
                 message
         );
 
-        updateChatAfterNewMessage(
+        return updateChatAfterNewMessage(
                 chat,
                 message.getText(),
                 message.getFormattedTime()
         );
-
-        return chats.get(0);
     }
 
     public Chat addBotMessage(Chat chat, Message message) {
-        if (chat == null || helperBotUser == null) {
+        if (chat == null || message == null || helperBotUser == null) {
             return null;
         }
 
@@ -266,18 +278,20 @@ public class MessengerModel {
                 message
         );
 
-        updateChatAfterNewMessage(
+        return updateChatAfterNewMessage(
                 chat,
                 message.getText(),
                 message.getFormattedTime()
         );
-
-        return chats.get(0);
     }
 
-    private void updateChatAfterNewMessage(Chat chat, String lastMessageText, String lastMessageTime) {
+    private Chat updateChatAfterNewMessage(
+            Chat chat,
+            String lastMessageText,
+            String lastMessageTime
+    ) {
         if (chat == null) {
-            return;
+            return null;
         }
 
         chatService.updateChatActivity(chat.getId());
@@ -285,7 +299,7 @@ public class MessengerModel {
         int index = chats.indexOf(chat);
 
         if (index == -1) {
-            return;
+            return null;
         }
 
         Chat updatedChat = new Chat(
@@ -293,7 +307,8 @@ public class MessengerModel {
                 chat.getName(),
                 chat.getType(),
                 lastMessageText,
-                lastMessageTime
+                lastMessageTime,
+                chat.getCompanionUserId()
         );
 
         chats.remove(index);
@@ -301,6 +316,8 @@ public class MessengerModel {
 
         ObservableList<Message> messages = chatMessages.remove(chat.getId());
         chatMessages.put(updatedChat.getId(), messages);
+
+        return updatedChat;
     }
 
     public Message generateBotResponse(String userText) {
@@ -315,5 +332,42 @@ public class MessengerModel {
         }
 
         return new Message("Bot", response);
+    }
+
+    public Chat findChatById(int chatId) {
+        for (Chat chat : chats) {
+            if (chat.getId() == chatId) {
+                return chat;
+            }
+        }
+
+        return null;
+    }
+
+    public Chat addIncomingMessage(Chat chat, Message message) {
+        if (chat == null) {
+            return null;
+        }
+
+        ObservableList<Message> messages = chatMessages.get(chat.getId());
+
+        if (messages == null) {
+            messages = FXCollections.observableArrayList();
+            chatMessages.put(chat.getId(), messages);
+        }
+
+        messages.add(message);
+
+        return updateChatAfterNewMessage(
+                chat,
+                message.getText(),
+                message.getFormattedTime()
+        );
+    }
+
+    public void reloadChats() {
+        chats.clear();
+        chatMessages.clear();
+        loadChats();
     }
 }

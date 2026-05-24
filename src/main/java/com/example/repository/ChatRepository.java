@@ -65,33 +65,40 @@ public class ChatRepository {
         List<Chat> chats = new ArrayList<>();
 
         String sql = """
-        SELECT c.id,
-               COALESCE(cm.custom_chat_name, c.chat_name) AS chat_name,
-               c.chat_type,
-               (
-                   SELECT m.text
-                   FROM messages m
-                   WHERE m.chat_id = c.id
-                   ORDER BY m.created_at DESC, m.id DESC
-                   LIMIT 1
-               ) AS last_message_text,
-               (
-                   SELECT TO_CHAR(m.created_at, 'HH24:MI')
-                   FROM messages m
-                   WHERE m.chat_id = c.id
-                   ORDER BY m.created_at DESC, m.id DESC
-                   LIMIT 1
-               ) AS last_message_time
-        FROM chats c
-        JOIN chat_members cm ON c.id = cm.chat_id
-        WHERE cm.user_id = ?
-        ORDER BY c.updated_at DESC, c.id DESC
-        """;
-
+    SELECT c.id,
+           COALESCE(cm.custom_chat_name, c.chat_name) AS chat_name,
+           c.chat_type,
+           (
+               SELECT m.text
+               FROM messages m
+               WHERE m.chat_id = c.id
+               ORDER BY m.created_at DESC, m.id DESC
+               LIMIT 1
+           ) AS last_message_text,
+           (
+               SELECT TO_CHAR(m.created_at, 'HH24:MI')
+               FROM messages m
+               WHERE m.chat_id = c.id
+               ORDER BY m.created_at DESC, m.id DESC
+               LIMIT 1
+           ) AS last_message_time,
+           (
+               SELECT cm2.user_id
+               FROM chat_members cm2
+               WHERE cm2.chat_id = c.id
+                 AND cm2.user_id <> ?
+               LIMIT 1
+           ) AS companion_user_id
+    FROM chats c
+    JOIN chat_members cm ON c.id = cm.chat_id
+    WHERE cm.user_id = ?
+    ORDER BY c.updated_at DESC, c.id DESC
+    """;
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setInt(1, userId);
+            statement.setInt(2, userId);
 
             ResultSet resultSet = statement.executeQuery();
 
@@ -101,7 +108,8 @@ public class ChatRepository {
                         resultSet.getString("chat_name"),
                         resultSet.getString("chat_type"),
                         resultSet.getString("last_message_text"),
-                        resultSet.getString("last_message_time")
+                        resultSet.getString("last_message_time"),
+                        (Integer) resultSet.getObject("companion_user_id")
                 ));
             }
 
@@ -218,7 +226,10 @@ public class ChatRepository {
                     return new Chat(
                             chatId,
                             currentUserChatName,
-                            resultSet.getString("chat_type")
+                            resultSet.getString("chat_type"),
+                            null,
+                            null,
+                            targetUserId
                     );
                 }
 

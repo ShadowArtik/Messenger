@@ -76,6 +76,49 @@ public class WebSocketClient {
                 );
     }
 
+    public void sendPrivateMessage(
+            int chatId,
+            int senderId,
+            int receiverId,
+            String senderUsername,
+            String senderDisplayName,
+            String text
+    ) {
+        String json = String.format(
+                """
+                {
+                  "type": "PRIVATE_MESSAGE",
+                  "chatId": %d,
+                  "senderId": %d,
+                  "receiverId": %d,
+                  "senderUsername": "%s",
+                  "senderDisplayName": "%s",
+                  "text": "%s"
+                }
+                """,
+                chatId,
+                senderId,
+                receiverId,
+                escapeJson(senderUsername),
+                escapeJson(senderDisplayName),
+                escapeJson(text)
+        );
+
+        sendMessage(json);
+    }
+
+    private String escapeJson(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "");
+    }
+
     public void sendMessage(String text) {
         if (webSocket == null) {
             System.out.println("WebSocket is not connected");
