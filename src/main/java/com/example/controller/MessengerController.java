@@ -32,6 +32,9 @@ import javafx.geometry.Side;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.Priority;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
 
 
 
@@ -55,6 +58,8 @@ public class MessengerController {
     private StackPane deleteChatOverlay;
     @FXML
     private StackPane clearChatOverlay;
+    @FXML
+    private StackPane logoutOverlay;
 
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
@@ -587,5 +592,57 @@ public class MessengerController {
         );
 
         chatContextMenu.getStyleClass().add("chat-context-menu");
+    }
+
+    @FXML
+    private void onLogoutClick() {
+        hideChatMenu();
+
+        if (logoutOverlay != null) {
+            logoutOverlay.setVisible(true);
+            logoutOverlay.setManaged(true);
+        }
+    }
+
+    @FXML
+    private void onCancelLogoutClick() {
+        if (logoutOverlay != null) {
+            logoutOverlay.setVisible(false);
+            logoutOverlay.setManaged(false);
+        }
+    }
+
+    @FXML
+    private void onConfirmLogoutClick() {
+        Session.clear();
+        openLoginScreen();
+    }
+
+    private void openLoginScreen() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/Login.fxml")
+            );
+
+            Scene scene = new Scene(loader.load(), 800, 500);
+
+            scene.getStylesheets().add(
+                    getClass().getResource("/style.css").toExternalForm()
+            );
+
+            Stage stage = (Stage) contactsListView.getScene().getWindow();
+            stage.setTitle("Messenger");
+            stage.setScene(scene);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showMessage("Error", "Cannot return to login screen.");
+        }
+    }
+
+    private void hideChatMenu() {
+        if (chatContextMenu != null && chatContextMenu.isShowing()) {
+            chatContextMenu.hide();
+        }
     }
 }
