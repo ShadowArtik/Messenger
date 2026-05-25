@@ -32,17 +32,48 @@
     -fx-font-weight: bold;
 }
 
-.chat-search-field {
+.chat-search-box {
     -fx-background-color: #1E1F22;
+    -fx-background-radius: 18;
+    -fx-border-color: transparent;
+    -fx-border-radius: 18;
+    -fx-border-width: 0;
+    -fx-padding: 0 10 0 0;
+}
+
+.chat-search-field {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
     -fx-text-fill: white;
     -fx-prompt-text-fill: #8F949E;
-    -fx-background-radius: 12;
-    -fx-border-color: #3A3D44;
-    -fx-border-radius: 12;
-    -fx-border-width: 1;
-    -fx-padding: 8 12 8 12;
+    -fx-padding: 8 8 8 14;
     -fx-font-size: 13px;
     -fx-max-width: Infinity;
+}
+
+.chat-search-field:focused {
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-color: transparent;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.clear-search-label {
+    -fx-text-fill: #8F949E;
+    -fx-font-size: 20px;
+    -fx-font-weight: normal;
+    -fx-min-width: 18px;
+    -fx-pref-width: 18px;
+    -fx-max-width: 18px;
+    -fx-alignment: center;
+    -fx-cursor: hand;
+}
+
+.clear-search-label:hover {
+    -fx-text-fill: #D4D8E0;
 }
 
 .chat-title {
@@ -165,6 +196,29 @@
 .text-field:focused {
     -fx-border-color: #5B9DFF;
     -fx-border-width: 1.5;
+}
+
+.chat-search-box {
+    -fx-background-color: #383A40;
+    -fx-background-radius: 18;
+    -fx-border-color: transparent;
+    -fx-border-radius: 18;
+    -fx-border-width: 0;
+    -fx-padding: 0 10 0 0;
+    -fx-max-width: Infinity;
+}
+
+.chat-search-box .chat-search-field,
+.chat-search-box .chat-search-field:focused {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 18;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-border-radius: 18;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-padding: 8 8 8 12;
 }
 
 /* =========================
@@ -529,22 +583,36 @@
     -fx-background-color: #3A3D44;
 }
 
-.logout-box {
-    -fx-padding: 10 12 14 12;
+.current-user-box {
+    -fx-background-color: #232428;
+    -fx-padding: 10 12 10 12;
+    -fx-border-color: #34373D;
+    -fx-border-width: 1 0 0 0;
 }
 
-.logout-button {
-    -fx-background-color: #2f333b;
+.current-user-display-name {
     -fx-text-fill: white;
     -fx-font-size: 13px;
     -fx-font-weight: bold;
-    -fx-background-radius: 16;
-    -fx-padding: 8 16;
-    -fx-cursor: hand;
+}
+
+.current-user-username {
+    -fx-text-fill: #B8BDC7;
+    -fx-font-size: 12px;
+    -fx-font-weight: normal;
+}
+
+.logout-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B8BDC7;
+    -fx-font-size: 11px;
+    -fx-padding: 6 8 6 8;
+    -fx-background-radius: 8;
 }
 
 .logout-button:hover {
-    -fx-background-color: #3a3f48;
+    -fx-background-color: #353941;
+    -fx-text-fill: white;
 }
 
 .danger-button {

@@ -23,15 +23,44 @@
                         styleClass="add-chat-button"/>
             </HBox>
 
-            <TextField fx:id="chatSearchField"
-                       promptText="Search chats..."
-                       styleClass="chat-search-field"/>
+            <HBox alignment="CENTER_LEFT"
+                  spacing="4"
+                  styleClass="chat-search-box">
+
+                <TextField fx:id="chatSearchField"
+                           promptText="Search chats..."
+                           HBox.hgrow="ALWAYS"
+                           styleClass="chat-search-field"/>
+
+                <Label fx:id="clearChatSearchLabel"
+                       text="×"
+                       visible="false"
+                       managed="false"
+                       onMouseClicked="#onClearChatSearchClick"
+                       styleClass="clear-search-label"/>
+            </HBox>
 
             <ListView fx:id="contactsListView"
                       VBox.vgrow="ALWAYS"/>
 
-            <HBox alignment="CENTER_LEFT"
-                  styleClass="logout-box">
+            <HBox fx:id="currentUserBox"
+                  alignment="CENTER_LEFT"
+                  spacing="10"
+                  styleClass="current-user-box">
+
+                <StackPane fx:id="currentUserAvatar"/>
+
+                <VBox spacing="2"
+                      HBox.hgrow="ALWAYS">
+
+                    <Label fx:id="currentUserDisplayNameLabel"
+                           text="Display Name"
+                           styleClass="current-user-display-name"/>
+
+                    <Label fx:id="currentUserUsernameLabel"
+                           text="@username"
+                           styleClass="current-user-username"/>
+                </VBox>
 
                 <Button text="Logout"
                         onAction="#onLogoutClick"

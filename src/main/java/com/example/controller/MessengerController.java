@@ -71,10 +71,17 @@ public class MessengerController {
     private VBox emptyChatBox;
     @FXML
     private TextField chatSearchField;
+    @FXML
+    private StackPane currentUserAvatar;
+    @FXML
+    private Label currentUserDisplayNameLabel;
+    @FXML
+    private Label currentUserUsernameLabel;
 
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
     @FXML private Label typingLabel;
+    @FXML private Label clearChatSearchLabel;
     @FXML private StackPane chatAvatar;
     @FXML private TextField messageTextField;
     @FXML private Button menuButton;
@@ -112,7 +119,10 @@ public class MessengerController {
         contactsListView.setItems(filteredChats);
 
         chatSearchField.textProperty().addListener(
-                (observable, oldValue, newValue) -> filterChats(newValue)
+                (observable, oldValue, newValue) -> {
+                    filterChats(newValue);
+                    updateClearChatSearchLabel(newValue);
+                }
         );
 
         contactsListView.setCellFactory(listView -> new ListCell<>() {
@@ -279,6 +289,7 @@ public class MessengerController {
         });
 
         setupChatContextMenu();
+        setupCurrentUserProfile();
     }
 
     private void openChat(Chat chat) {
@@ -368,6 +379,19 @@ public class MessengerController {
                     .toLowerCase()
                     .contains(searchText);
         });
+    }
+
+    private void updateClearChatSearchLabel(String text) {
+        boolean hasSearchText = text != null && !text.isBlank();
+
+        clearChatSearchLabel.setVisible(hasSearchText);
+        clearChatSearchLabel.setManaged(hasSearchText);
+    }
+
+    @FXML
+    private void onClearChatSearchClick() {
+        chatSearchField.clear();
+        chatSearchField.requestFocus();
     }
 
     private void scrollMessagesTo(int index) {
@@ -518,6 +542,23 @@ public class MessengerController {
         Label botBadge = new Label("BOT");
         botBadge.getStyleClass().add("bot-badge");
         return botBadge;
+    }
+
+    private void setupCurrentUserProfile() {
+        if (Session.getCurrentUser() == null) {
+            return;
+        }
+
+        String displayName = Session.getCurrentUser().getDisplayName();
+        String username = Session.getCurrentUser().getUsername();
+
+        currentUserDisplayNameLabel.setText(displayName);
+        currentUserUsernameLabel.setText("@" + username);
+
+        currentUserAvatar.getChildren().clear();
+        currentUserAvatar.getChildren().add(
+                createBaseAvatar(displayName, 18)
+        );
     }
 
     @FXML
