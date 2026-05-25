@@ -11,6 +11,7 @@ import com.google.gson.Gson;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -27,6 +28,8 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.ScrollBar;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -66,6 +69,8 @@ public class MessengerController {
     private VBox chatArea;
     @FXML
     private VBox emptyChatBox;
+    @FXML
+    private TextField chatSearchField;
 
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
@@ -79,6 +84,7 @@ public class MessengerController {
     private MessengerModel model;
     private Chat selectedChat;
     private WebSocketClient webSocketClient;
+    private FilteredList<Chat> filteredChats;
     private PauseTransition typingHideDelay;
     private final Set<Integer> typingChatIds = new HashSet<>();
     private final Map<Integer, PauseTransition> chatTypingHideDelays = new HashMap<>();
@@ -98,7 +104,16 @@ public class MessengerController {
                 Session.getCurrentUser().getDisplayName()
         );
 
-        contactsListView.setItems(model.getChats());
+        filteredChats = new FilteredList<>(
+                model.getChats(),
+                chat -> true
+        );
+
+        contactsListView.setItems(filteredChats);
+
+        chatSearchField.textProperty().addListener(
+                (observable, oldValue, newValue) -> filterChats(newValue)
+        );
 
         contactsListView.setCellFactory(listView -> new ListCell<>() {
 
@@ -251,6 +266,18 @@ public class MessengerController {
                 (observable, oldValue, newValue) -> sendTypingStatus()
         );
 
+        Platform.runLater(() -> {
+            Scene scene = contactsListView.getScene();
+
+            if (scene != null) {
+                scene.setOnKeyPressed(event -> {
+                    if (event.getCode() == KeyCode.ESCAPE) {
+                        hideAllOverlays();
+                    }
+                });
+            }
+        });
+
         setupChatContextMenu();
     }
 
@@ -325,6 +352,22 @@ public class MessengerController {
         chatTitleLabel.setText("");
         chatTitleLabel.setGraphic(null);
         chatAvatar.getChildren().clear();
+    }
+
+    private void filterChats(String text) {
+        String searchText = text == null
+                ? ""
+                : text.trim().toLowerCase();
+
+        filteredChats.setPredicate(chat -> {
+            if (searchText.isEmpty()) {
+                return true;
+            }
+
+            return chat.getName()
+                    .toLowerCase()
+                    .contains(searchText);
+        });
     }
 
     private void scrollMessagesTo(int index) {
@@ -498,18 +541,19 @@ public class MessengerController {
         }
 
         clearChatOverlay.setVisible(true);
+        clearChatOverlay.setManaged(true);
         clearChatOverlay.toFront();
     }
 
     @FXML
     private void onCancelClearChatClick() {
-        clearChatOverlay.setVisible(false);
+        hideAllOverlays();
     }
 
     @FXML
     private void onConfirmClearChatClick() {
         if (selectedChat == null) {
-            clearChatOverlay.setVisible(false);
+            hideAllOverlays();
             return;
         }
 
@@ -527,7 +571,7 @@ public class MessengerController {
             openChat(selectedChat);
         }
 
-        clearChatOverlay.setVisible(false);
+        hideAllOverlays();
     }
 
     @FXML
@@ -544,6 +588,7 @@ public class MessengerController {
         renameChatErrorLabel.setManaged(false);
 
         renameChatOverlay.setVisible(true);
+        renameChatOverlay.setManaged(true);
         renameChatOverlay.toFront();
 
         renameChatNameField.requestFocus();
@@ -552,7 +597,7 @@ public class MessengerController {
 
     @FXML
     private void onCancelRenameChatClick() {
-        renameChatOverlay.setVisible(false);
+        hideAllOverlays();
 
         renameChatNameField.clear();
 
@@ -575,7 +620,7 @@ public class MessengerController {
         }
 
         if (newName.equals(selectedChat.getName())) {
-            renameChatOverlay.setVisible(false);
+            hideAllOverlays();
             return;
         }
 
@@ -586,7 +631,7 @@ public class MessengerController {
         openChat(selectedChat);
         contactsListView.refresh();
 
-        renameChatOverlay.setVisible(false);
+        hideAllOverlays();
         renameChatNameField.clear();
     }
 
@@ -604,18 +649,19 @@ public class MessengerController {
         }
 
         deleteChatOverlay.setVisible(true);
+        deleteChatOverlay.setManaged(true);
         deleteChatOverlay.toFront();
     }
 
     @FXML
     private void onCancelDeleteChatClick() {
-        deleteChatOverlay.setVisible(false);
+        hideAllOverlays();
     }
 
     @FXML
     private void onConfirmDeleteChatClick() {
         if (selectedChat == null) {
-            deleteChatOverlay.setVisible(false);
+            hideAllOverlays();
             return;
         }
 
@@ -623,7 +669,7 @@ public class MessengerController {
 
         model.deleteChat(chatToDelete);
 
-        deleteChatOverlay.setVisible(false);
+        hideAllOverlays();
         showEmptyChatState();
     }
 
@@ -637,6 +683,7 @@ public class MessengerController {
         createChatErrorLabel.setManaged(false);
 
         createChatOverlay.setVisible(true);
+        createChatOverlay.setManaged(true);
         createChatOverlay.toFront();
 
         createChatUsernameField.requestFocus();
@@ -644,7 +691,7 @@ public class MessengerController {
 
     @FXML
     private void onCancelCreateChatClick() {
-        createChatOverlay.setVisible(false);
+        hideAllOverlays();
 
         createChatUsernameField.clear();
 
@@ -1025,15 +1072,13 @@ public class MessengerController {
         if (logoutOverlay != null) {
             logoutOverlay.setVisible(true);
             logoutOverlay.setManaged(true);
+            logoutOverlay.toFront();
         }
     }
 
     @FXML
     private void onCancelLogoutClick() {
-        if (logoutOverlay != null) {
-            logoutOverlay.setVisible(false);
-            logoutOverlay.setManaged(false);
-        }
+        hideAllOverlays();
     }
 
     @FXML
@@ -1071,6 +1116,33 @@ public class MessengerController {
     private void hideChatMenu() {
         if (chatContextMenu != null && chatContextMenu.isShowing()) {
             chatContextMenu.hide();
+        }
+    }
+
+    @FXML
+    private void onOverlayBackgroundClick() {
+        hideAllOverlays();
+    }
+
+    @FXML
+    private void onModalWindowClick(MouseEvent event) {
+        event.consume();
+    }
+
+    private void hideAllOverlays() {
+        hideChatMenu();
+
+        hideOverlay(createChatOverlay);
+        hideOverlay(renameChatOverlay);
+        hideOverlay(deleteChatOverlay);
+        hideOverlay(clearChatOverlay);
+        hideOverlay(logoutOverlay);
+    }
+
+    private void hideOverlay(StackPane overlay) {
+        if (overlay != null) {
+            overlay.setVisible(false);
+            overlay.setManaged(false);
         }
     }
 }

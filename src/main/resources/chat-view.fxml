@@ -23,6 +23,10 @@
                         styleClass="add-chat-button"/>
             </HBox>
 
+            <TextField fx:id="chatSearchField"
+                       promptText="Search chats..."
+                       styleClass="chat-search-field"/>
+
             <ListView fx:id="contactsListView"
                       VBox.vgrow="ALWAYS"/>
 
@@ -106,7 +110,9 @@
 
             <StackPane fx:id="createChatOverlay"
                        visible="false"
-                       styleClass="modal-overlay">
+                       managed="false"
+                       styleClass="modal-overlay"
+                       onMouseClicked="#onOverlayBackgroundClick">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -114,7 +120,8 @@
                       maxWidth="380"
                       prefHeight="245"
                       maxHeight="245"
-                      styleClass="create-chat-dialog">
+                      styleClass="create-chat-dialog"
+                      onMouseClicked="#onModalWindowClick">
 
                     <Label text="Create new chat"
                            styleClass="dialog-title"/>
@@ -150,7 +157,9 @@
 
             <StackPane fx:id="renameChatOverlay"
                        visible="false"
-                       styleClass="modal-overlay">
+                       managed="false"
+                       styleClass="modal-overlay"
+                       onMouseClicked="#onOverlayBackgroundClick">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -158,7 +167,8 @@
                       maxWidth="380"
                       prefHeight="245"
                       maxHeight="245"
-                      styleClass="create-chat-dialog">
+                      styleClass="create-chat-dialog"
+                      onMouseClicked="#onModalWindowClick">
 
                     <Label text="Rename chat"
                            styleClass="dialog-title"/>
@@ -194,7 +204,9 @@
 
             <StackPane fx:id="deleteChatOverlay"
                        visible="false"
-                       styleClass="modal-overlay">
+                       managed="false"
+                       styleClass="modal-overlay"
+                       onMouseClicked="#onOverlayBackgroundClick">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -202,7 +214,8 @@
                       maxWidth="380"
                       prefHeight="220"
                       maxHeight="220"
-                      styleClass="create-chat-dialog">
+                      styleClass="create-chat-dialog"
+                      onMouseClicked="#onModalWindowClick">
 
                     <Label text="Delete chat"
                            styleClass="dialog-title"/>
@@ -231,7 +244,9 @@
 
             <StackPane fx:id="clearChatOverlay"
                        visible="false"
-                       styleClass="modal-overlay">
+                       managed="false"
+                       styleClass="modal-overlay"
+                       onMouseClicked="#onOverlayBackgroundClick">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -239,7 +254,8 @@
                       maxWidth="380"
                       prefHeight="220"
                       maxHeight="220"
-                      styleClass="create-chat-dialog">
+                      styleClass="create-chat-dialog"
+                      onMouseClicked="#onModalWindowClick">
 
                     <Label text="Clear chat"
                            styleClass="dialog-title"/>
@@ -269,7 +285,8 @@
             <StackPane fx:id="logoutOverlay"
                        visible="false"
                        managed="false"
-                       styleClass="modal-overlay">
+                       styleClass="modal-overlay"
+                       onMouseClicked="#onOverlayBackgroundClick">
 
                 <VBox alignment="CENTER_LEFT"
                       spacing="18"
@@ -277,7 +294,8 @@
                       maxWidth="360"
                       prefHeight="210"
                       maxHeight="210"
-                      styleClass="create-chat-dialog">
+                      styleClass="create-chat-dialog"
+                      onMouseClicked="#onModalWindowClick">
 
                     <Label text="Log out?"
                            styleClass="dialog-title"/>
