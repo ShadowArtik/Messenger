@@ -25,6 +25,10 @@ public class ChatService {
         chatRepository.renameChat(chatId, userId, newName);
     }
 
+    public void resetChatName(int chatId, int userId) {
+        chatRepository.resetChatName(chatId, userId);
+    }
+
     public void deleteChat(int chatId) {
         chatRepository.deleteChat(chatId);
     }
@@ -36,16 +40,12 @@ public class ChatService {
     public Chat createPrivateChat(
             String chatName,
             int currentUserId,
-            int targetUserId,
-            String currentUserChatName,
-            String targetUserChatName
+            int targetUserId
     ) {
         return chatRepository.createPrivateChat(
                 chatName,
                 currentUserId,
-                targetUserId,
-                currentUserChatName,
-                targetUserChatName
+                targetUserId
         );
     }
 

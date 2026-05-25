@@ -9,13 +9,14 @@ public class Chat {
     private final String lastMessageTime;
     private final Integer companionUserId;
     private final int unreadCount;
+    private final boolean customName;
 
     public Chat(int id, String name, String type) {
-        this(id, name, type, null, null, null, 0);
+        this(id, name, type, null, null, null, 0, false);
     }
 
     public Chat(int id, String name, String type, String lastMessageText, String lastMessageTime) {
-        this(id, name, type, lastMessageText, lastMessageTime, null, 0);
+        this(id, name, type, lastMessageText, lastMessageTime, null, 0, false);
     }
 
     public Chat(
@@ -26,7 +27,7 @@ public class Chat {
             String lastMessageTime,
             Integer companionUserId
     ) {
-        this(id, name, type, lastMessageText, lastMessageTime, companionUserId, 0);
+        this(id, name, type, lastMessageText, lastMessageTime, companionUserId, 0, false);
     }
 
     public Chat(
@@ -38,6 +39,19 @@ public class Chat {
             Integer companionUserId,
             int unreadCount
     ) {
+        this(id, name, type, lastMessageText, lastMessageTime, companionUserId, unreadCount, false);
+    }
+
+    public Chat(
+            int id,
+            String name,
+            String type,
+            String lastMessageText,
+            String lastMessageTime,
+            Integer companionUserId,
+            int unreadCount,
+            boolean customName
+    ) {
         this.id = id;
         this.name = name;
         this.type = type;
@@ -45,6 +59,7 @@ public class Chat {
         this.lastMessageTime = lastMessageTime;
         this.companionUserId = companionUserId;
         this.unreadCount = unreadCount;
+        this.customName = customName;
     }
 
     public int getId() {
@@ -73,6 +88,10 @@ public class Chat {
 
     public int getUnreadCount() {
         return unreadCount;
+    }
+
+    public boolean hasCustomName() {
+        return customName;
     }
 
     public boolean isBot() {

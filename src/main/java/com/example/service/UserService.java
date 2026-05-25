@@ -88,4 +88,19 @@ public class UserService {
     public void markHelperInitialized(int userId) {
         userRepository.markHelperInitialized(userId);
     }
+
+    public boolean updateDisplayName(int userId, String newDisplayName) {
+        if (newDisplayName == null || newDisplayName.isBlank()) {
+            return false;
+        }
+
+        if (newDisplayName.length() > 100) {
+            return false;
+        }
+
+        return userRepository.updateDisplayName(
+                userId,
+                newDisplayName.trim()
+        );
+    }
 }

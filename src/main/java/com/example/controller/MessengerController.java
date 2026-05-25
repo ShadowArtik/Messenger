@@ -4,6 +4,8 @@ import com.example.model.Chat;
 import com.example.model.Message;
 import com.example.model.MessengerModel;
 import com.example.model.Session;
+import com.example.model.User;
+import com.example.service.UserService;
 import com.example.service.result.CreateChatResponse;
 import com.example.network.WebSocketClient;
 import com.example.network.dto.IncomingMessage;
@@ -66,6 +68,8 @@ public class MessengerController {
     @FXML
     private StackPane logoutOverlay;
     @FXML
+    private StackPane profileOverlay;
+    @FXML
     private VBox chatArea;
     @FXML
     private VBox emptyChatBox;
@@ -77,6 +81,10 @@ public class MessengerController {
     private Label currentUserDisplayNameLabel;
     @FXML
     private Label currentUserUsernameLabel;
+    @FXML
+    private Label profileUsernameLabel;
+    @FXML
+    private TextField profileDisplayNameField;
 
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
@@ -91,6 +99,7 @@ public class MessengerController {
     private MessengerModel model;
     private Chat selectedChat;
     private WebSocketClient webSocketClient;
+    private final UserService userService = new UserService();
     private FilteredList<Chat> filteredChats;
     private PauseTransition typingHideDelay;
     private final Set<Integer> typingChatIds = new HashSet<>();
@@ -562,6 +571,84 @@ public class MessengerController {
     }
 
     @FXML
+    private void onEditProfileClick() {
+        if (Session.getCurrentUser() == null) {
+            return;
+        }
+
+        hideAllOverlays();
+
+        profileUsernameLabel.setText(
+                "@" + Session.getCurrentUser().getUsername()
+        );
+
+        profileDisplayNameField.setText(
+                Session.getCurrentUser().getDisplayName()
+        );
+
+        profileOverlay.setVisible(true);
+        profileOverlay.setManaged(true);
+        profileOverlay.toFront();
+
+        Platform.runLater(() -> {
+            profileDisplayNameField.requestFocus();
+            profileDisplayNameField.positionCaret(
+                    profileDisplayNameField.getText().length()
+            );
+        });
+    }
+
+    @FXML
+    private void onCancelProfileClick() {
+        hideAllOverlays();
+    }
+
+    @FXML
+    private void onSaveProfileClick() {
+        if (Session.getCurrentUser() == null) {
+            return;
+        }
+
+        String newDisplayName = profileDisplayNameField.getText().trim();
+
+        if (newDisplayName.isEmpty()) {
+            showMessage(
+                    "Invalid name",
+                    "Display name cannot be empty."
+            );
+            return;
+        }
+
+        boolean updated = userService.updateDisplayName(
+                Session.getCurrentUser().getId(),
+                newDisplayName
+        );
+
+        if (!updated) {
+            showMessage(
+                    "Error",
+                    "Could not update display name."
+            );
+            return;
+        }
+
+        User updatedUser = new User(
+                Session.getCurrentUser().getId(),
+                Session.getCurrentUser().getUsername(),
+                newDisplayName
+        );
+
+        Session.setCurrentUser(updatedUser);
+
+        setupCurrentUserProfile();
+        webSocketClient.sendProfileUpdatedMessage(
+                updatedUser.getId(),
+                updatedUser.getDisplayName()
+        );
+        hideAllOverlays();
+    }
+
+    @FXML
     private void onMenuButtonClick() {
         if (selectedChat == null) {
             return;
@@ -671,6 +758,25 @@ public class MessengerController {
 
         openChat(selectedChat);
         contactsListView.refresh();
+
+        hideAllOverlays();
+        renameChatNameField.clear();
+    }
+
+    @FXML
+    private void onResetRenameChatClick() {
+        if (selectedChat == null) {
+            return;
+        }
+
+        Chat updatedChat = model.resetChatName(selectedChat);
+
+        if (updatedChat != null) {
+            selectedChat = updatedChat;
+            contactsListView.getSelectionModel().select(selectedChat);
+            contactsListView.refresh();
+            openChat(selectedChat);
+        }
 
         hideAllOverlays();
         renameChatNameField.clear();
@@ -933,6 +1039,11 @@ public class MessengerController {
                 return;
             }
 
+            if (incoming.isUserProfileUpdated()) {
+                handleUserProfileUpdated(incoming);
+                return;
+            }
+
             if (!incoming.isPrivateMessage()) {
                 return;
             }
@@ -1017,6 +1128,40 @@ public class MessengerController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void handleUserProfileUpdated(IncomingMessage incoming) {
+        if (incoming.getUserId() == Session.getCurrentUser().getId()) {
+            return;
+        }
+
+        int selectedChatId = selectedChat != null ? selectedChat.getId() : -1;
+
+        Chat updatedProfileChat = model.updateCompanionDisplayName(
+                incoming.getUserId(),
+                incoming.getDisplayName()
+        );
+
+        contactsListView.refresh();
+
+        if (selectedChatId == -1) {
+            return;
+        }
+
+        Chat updatedSelectedChat =
+                updatedProfileChat != null && updatedProfileChat.getId() == selectedChatId
+                        ? updatedProfileChat
+                        : model.findChatById(selectedChatId);
+
+        if (updatedSelectedChat == null) {
+            showEmptyChatState();
+            return;
+        }
+
+        selectedChat = updatedSelectedChat;
+        contactsListView.getSelectionModel().select(selectedChat);
+        updateChatHeader(selectedChat);
+        messagesListView.setItems(model.getMessagesForChat(selectedChat));
     }
 
     private void handleTypingMessage(IncomingMessage incoming) {
@@ -1178,6 +1323,7 @@ public class MessengerController {
         hideOverlay(deleteChatOverlay);
         hideOverlay(clearChatOverlay);
         hideOverlay(logoutOverlay);
+        hideOverlay(profileOverlay);
     }
 
     private void hideOverlay(StackPane overlay) {

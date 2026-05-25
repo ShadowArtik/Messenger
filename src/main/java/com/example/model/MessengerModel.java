@@ -109,9 +109,7 @@ public class MessengerModel {
         Chat chat = chatService.createPrivateChat(
                 targetUser.getDisplayName(),
                 Session.getCurrentUser().getId(),
-                targetUser.getId(),
-                targetUser.getDisplayName(),
-                Session.getCurrentUser().getDisplayName()
+                targetUser.getId()
         );
 
         if (chat == null) {
@@ -164,13 +162,31 @@ public class MessengerModel {
                 chat.getLastMessageText(),
                 chat.getLastMessageTime(),
                 chat.getCompanionUserId(),
-                chat.getUnreadCount()
+                chat.getUnreadCount(),
+                true
         );
 
         chats.set(index, renamedChat);
 
         ObservableList<Message> messages = chatMessages.remove(chat.getId());
         chatMessages.put(renamedChat.getId(), messages);
+    }
+
+    public Chat resetChatName(Chat chat) {
+        if (chat == null) {
+            return null;
+        }
+
+        int chatId = chat.getId();
+
+        chatService.resetChatName(
+                chatId,
+                Session.getCurrentUser().getId()
+        );
+
+        reloadChats();
+
+        return findChatById(chatId);
     }
 
     public void deleteChat(Chat chat) {
@@ -206,7 +222,8 @@ public class MessengerModel {
                 null,
                 null,
                 chat.getCompanionUserId(),
-                0
+                0,
+                chat.hasCustomName()
         );
 
         int index = chats.indexOf(chat);
@@ -315,7 +332,8 @@ public class MessengerModel {
                 lastMessageText,
                 lastMessageTime,
                 chat.getCompanionUserId(),
-                chat.getUnreadCount()
+                chat.getUnreadCount(),
+                chat.hasCustomName()
         );
 
         chats.remove(index);
@@ -404,6 +422,42 @@ public class MessengerModel {
         return userId != null && onlineUserIds.contains(userId);
     }
 
+    public Chat updateCompanionDisplayName(int companionUserId, String displayName) {
+        if (displayName == null || displayName.isBlank()) {
+            return null;
+        }
+
+        for (int i = 0; i < chats.size(); i++) {
+            Chat chat = chats.get(i);
+
+            if (chat.getCompanionUserId() == null
+                    || chat.hasCustomName()
+                    || chat.getCompanionUserId() != companionUserId) {
+                continue;
+            }
+
+            Chat updatedChat = new Chat(
+                    chat.getId(),
+                    displayName,
+                    chat.getType(),
+                    chat.getLastMessageText(),
+                    chat.getLastMessageTime(),
+                    chat.getCompanionUserId(),
+                    chat.getUnreadCount(),
+                    chat.hasCustomName()
+            );
+
+            chats.set(i, updatedChat);
+
+            ObservableList<Message> messages = chatMessages.remove(chat.getId());
+            chatMessages.put(updatedChat.getId(), messages);
+
+            return updatedChat;
+        }
+
+        return null;
+    }
+
     public Chat increaseUnreadCount(Chat chat) {
         if (chat == null) {
             return null;
@@ -422,7 +476,8 @@ public class MessengerModel {
                 chat.getLastMessageText(),
                 chat.getLastMessageTime(),
                 chat.getCompanionUserId(),
-                chat.getUnreadCount() + 1
+                chat.getUnreadCount() + 1,
+                chat.hasCustomName()
         );
 
         chats.set(index, updatedChat);
@@ -455,7 +510,8 @@ public class MessengerModel {
                 chat.getLastMessageText(),
                 chat.getLastMessageTime(),
                 chat.getCompanionUserId(),
-                0
+                0,
+                chat.hasCustomName()
         );
 
         chats.set(index, updatedChat);

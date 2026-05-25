@@ -65,40 +65,43 @@ public class ChatRepository {
         List<Chat> chats = new ArrayList<>();
 
         String sql = """
-    SELECT c.id,
-           COALESCE(cm.custom_chat_name, c.chat_name) AS chat_name,
-           c.chat_type,
-           (
-               SELECT m.text
-               FROM messages m
-               WHERE m.chat_id = c.id
-               ORDER BY m.created_at DESC, m.id DESC
-               LIMIT 1
-           ) AS last_message_text,
-           (
-               SELECT TO_CHAR(m.created_at, 'HH24:MI')
-               FROM messages m
-               WHERE m.chat_id = c.id
-               ORDER BY m.created_at DESC, m.id DESC
-               LIMIT 1
-           ) AS last_message_time,
-           (
-               SELECT cm2.user_id
-               FROM chat_members cm2
-               WHERE cm2.chat_id = c.id
-                 AND cm2.user_id <> ?
-               LIMIT 1
-           ) AS companion_user_id
-    FROM chats c
-    JOIN chat_members cm ON c.id = cm.chat_id
-    WHERE cm.user_id = ?
-    ORDER BY c.updated_at DESC, c.id DESC
-    """;
+                SELECT c.id,
+                       CASE
+                           WHEN c.chat_type = 'PRIVATE'
+                           THEN COALESCE(cm.custom_chat_name, companion.display_name)
+                           ELSE c.chat_name
+                       END AS chat_name,
+                       c.chat_type,
+                       companion.id AS companion_user_id,
+                       cm.custom_chat_name IS NOT NULL AS has_custom_name,
+                       last_msg.last_message_text,
+                       TO_CHAR(last_msg.created_at, 'HH24:MI') AS last_message_time
+                FROM chats c
+                JOIN chat_members cm ON c.id = cm.chat_id
+
+                LEFT JOIN chat_members companion_member
+                       ON companion_member.chat_id = c.id
+                      AND companion_member.user_id <> cm.user_id
+
+                LEFT JOIN users companion
+                       ON companion.id = companion_member.user_id
+
+                LEFT JOIN LATERAL (
+                    SELECT m.text AS last_message_text,
+                           m.created_at
+                    FROM messages m
+                    WHERE m.chat_id = c.id
+                    ORDER BY m.created_at DESC, m.id DESC
+                    LIMIT 1
+                ) last_msg ON true
+
+                WHERE cm.user_id = ?
+                ORDER BY c.updated_at DESC, c.id DESC
+                """;
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setInt(1, userId);
-            statement.setInt(2, userId);
 
             ResultSet resultSet = statement.executeQuery();
 
@@ -109,7 +112,9 @@ public class ChatRepository {
                         resultSet.getString("chat_type"),
                         resultSet.getString("last_message_text"),
                         resultSet.getString("last_message_time"),
-                        (Integer) resultSet.getObject("companion_user_id")
+                        (Integer) resultSet.getObject("companion_user_id"),
+                        0,
+                        resultSet.getBoolean("has_custom_name")
                 ));
             }
 
@@ -133,6 +138,26 @@ public class ChatRepository {
             statement.setString(1, newName);
             statement.setInt(2, chatId);
             statement.setInt(3, userId);
+
+            statement.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void resetChatName(int chatId, int userId) {
+        String sql = """
+            UPDATE chat_members
+            SET custom_chat_name = NULL
+            WHERE chat_id = ? AND user_id = ?
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, chatId);
+            statement.setInt(2, userId);
 
             statement.executeUpdate();
 
@@ -183,9 +208,7 @@ public class ChatRepository {
     public Chat createPrivateChat(
             String chatName,
             int currentUserId,
-            int targetUserId,
-            String currentUserChatName,
-            String targetUserChatName
+            int targetUserId
     ) {
         String insertChatSql = """
             INSERT INTO chats (chat_name, chat_type)
@@ -194,8 +217,8 @@ public class ChatRepository {
             """;
 
         String insertMemberSql = """
-            INSERT INTO chat_members (chat_id, user_id, custom_chat_name)
-            VALUES (?, ?, ?)
+            INSERT INTO chat_members (chat_id, user_id)
+            VALUES (?, ?)
             """;
 
         try (Connection connection = DatabaseConnection.getConnection()) {
@@ -212,12 +235,10 @@ public class ChatRepository {
                     try (PreparedStatement memberStatement = connection.prepareStatement(insertMemberSql)) {
                         memberStatement.setInt(1, chatId);
                         memberStatement.setInt(2, currentUserId);
-                        memberStatement.setString(3, currentUserChatName);
                         memberStatement.executeUpdate();
 
                         memberStatement.setInt(1, chatId);
                         memberStatement.setInt(2, targetUserId);
-                        memberStatement.setString(3, targetUserChatName);
                         memberStatement.executeUpdate();
                     }
 
@@ -225,7 +246,7 @@ public class ChatRepository {
 
                     return new Chat(
                             chatId,
-                            currentUserChatName,
+                            chatName,
                             resultSet.getString("chat_type"),
                             null,
                             null,

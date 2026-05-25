@@ -12,6 +12,7 @@ public class IncomingMessage {
     private List<Integer> userIds;
     private String senderUsername;
     private String senderDisplayName;
+    private String displayName;
     private String text;
 
     public String getType() {
@@ -40,6 +41,10 @@ public class IncomingMessage {
 
     public String getText() {
         return text;
+    }
+
+    public String getDisplayName() {
+        return displayName;
     }
 
     public int getUserId() {
@@ -72,5 +77,9 @@ public class IncomingMessage {
 
     public boolean isOnlineUsers() {
         return "ONLINE_USERS".equalsIgnoreCase(type);
+    }
+
+    public boolean isUserProfileUpdated() {
+        return "USER_PROFILE_UPDATED".equalsIgnoreCase(type);
     }
 }

@@ -2,6 +2,7 @@ package com.example.network;
 
 import com.example.network.dto.ConnectMessage;
 import com.example.network.dto.PrivateMessage;
+import com.example.network.dto.ProfileUpdatedMessage;
 import com.example.network.dto.TypingMessage;
 import com.google.gson.Gson;
 import javafx.application.Platform;
@@ -106,6 +107,13 @@ public class WebSocketClient {
         );
 
         sendMessage(gson.toJson(typingMessage));
+    }
+
+    public void sendProfileUpdatedMessage(int userId, String displayName) {
+        ProfileUpdatedMessage profileUpdatedMessage =
+                new ProfileUpdatedMessage(userId, displayName);
+
+        sendMessage(gson.toJson(profileUpdatedMessage));
     }
 
     public void sendMessage(String text) {

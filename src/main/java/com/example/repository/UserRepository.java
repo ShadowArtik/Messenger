@@ -140,4 +140,28 @@ public class UserRepository {
             e.printStackTrace();
         }
     }
+
+    public boolean updateDisplayName(int userId, String newDisplayName) {
+        String sql = """
+                UPDATE users
+                SET display_name = ?
+                WHERE id = ?
+                """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, newDisplayName);
+            statement.setInt(2, userId);
+
+            int updatedRows = statement.executeUpdate();
+
+            return updatedRows > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
 }
