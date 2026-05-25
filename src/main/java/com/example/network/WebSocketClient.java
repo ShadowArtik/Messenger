@@ -2,6 +2,7 @@ package com.example.network;
 
 import com.example.network.dto.ConnectMessage;
 import com.example.network.dto.PrivateMessage;
+import com.example.network.dto.TypingMessage;
 import com.google.gson.Gson;
 import javafx.application.Platform;
 
@@ -89,6 +90,22 @@ public class WebSocketClient {
         );
 
         sendMessage(gson.toJson(privateMessage));
+    }
+
+    public void sendTypingMessage(
+            int chatId,
+            int senderId,
+            int receiverId,
+            String senderDisplayName
+    ) {
+        TypingMessage typingMessage = new TypingMessage(
+                chatId,
+                senderId,
+                receiverId,
+                senderDisplayName
+        );
+
+        sendMessage(gson.toJson(typingMessage));
     }
 
     public void sendMessage(String text) {

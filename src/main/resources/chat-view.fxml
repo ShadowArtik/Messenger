@@ -40,7 +40,24 @@
     <center>
         <StackPane>
 
-            <VBox spacing="10" styleClass="chat-area">
+            <VBox fx:id="emptyChatBox"
+                  alignment="CENTER"
+                  spacing="10"
+                  styleClass="empty-chat-box">
+
+                <Label text="Select a chat"
+                       styleClass="empty-chat-title"/>
+
+                <Label text="Choose a chat from the left panel to start messaging"
+                       styleClass="empty-chat-subtitle"/>
+
+            </VBox>
+
+            <VBox fx:id="chatArea"
+                  spacing="10"
+                  styleClass="chat-area"
+                  visible="false"
+                  managed="false">
                 <HBox fx:id="chatHeaderBox"
                       alignment="CENTER_LEFT"
                       spacing="10"
@@ -48,10 +65,19 @@
 
                     <StackPane fx:id="chatAvatar"/>
 
-                    <Label fx:id="chatTitleLabel"
-                           text="Bot"
-                           styleClass="chat-title"
-                           HBox.hgrow="ALWAYS"/>
+                    <HBox alignment="CENTER_LEFT"
+                          spacing="8"
+                          HBox.hgrow="ALWAYS">
+
+                        <Label fx:id="chatTitleLabel"
+                               text="Bot"
+                               styleClass="chat-title"/>
+
+                        <Label fx:id="typingLabel"
+                               text=""
+                               visible="false"
+                               styleClass="typing-label"/>
+                    </HBox>
 
                     <Button fx:id="menuButton"
                             text="⋮"

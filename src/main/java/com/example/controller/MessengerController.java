@@ -8,6 +8,8 @@ import com.example.service.result.CreateChatResponse;
 import com.example.network.WebSocketClient;
 import com.example.network.dto.IncomingMessage;
 import com.google.gson.Gson;
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -22,12 +24,20 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
+import javafx.scene.control.ScrollBar;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Duration;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class MessengerController {
 
@@ -51,9 +61,14 @@ public class MessengerController {
     private StackPane clearChatOverlay;
     @FXML
     private StackPane logoutOverlay;
+    @FXML
+    private VBox chatArea;
+    @FXML
+    private VBox emptyChatBox;
 
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
+    @FXML private Label typingLabel;
     @FXML private StackPane chatAvatar;
     @FXML private TextField messageTextField;
     @FXML private Button menuButton;
@@ -62,6 +77,9 @@ public class MessengerController {
     private MessengerModel model;
     private Chat selectedChat;
     private WebSocketClient webSocketClient;
+    private PauseTransition typingHideDelay;
+    private final Set<Integer> typingChatIds = new HashSet<>();
+    private final Map<Integer, PauseTransition> chatTypingHideDelays = new HashMap<>();
     private final Gson gson = new Gson();
 
     @FXML
@@ -94,71 +112,76 @@ public class MessengerController {
 
                 HBox root = new HBox(10);
                 root.setAlignment(Pos.CENTER_LEFT);
+                root.setMaxWidth(Double.MAX_VALUE);
+                root.getStyleClass().add("chat-cell-root");
 
                 StackPane avatar = createAvatar(chat, 20);
 
                 VBox textBox = new VBox(3);
-                textBox.setMaxWidth(130);
+                textBox.setAlignment(Pos.CENTER_LEFT);
+                HBox.setHgrow(textBox, Priority.ALWAYS);
 
-                HBox topRow = new HBox(6);
-                topRow.setAlignment(Pos.CENTER_LEFT);
+                HBox nameRow = new HBox(6);
+                nameRow.setAlignment(Pos.CENTER_LEFT);
 
                 Label nameLabel = new Label(chat.getName());
-                nameLabel.setStyle(
-                        "-fx-text-fill: white;" +
-                                "-fx-font-size: 14px;" +
-                                "-fx-font-weight: bold;"
-                );
-
-                nameLabel.setMaxWidth(80);
+                nameLabel.getStyleClass().add("chat-name-label");
+                nameLabel.setMaxWidth(95);
                 nameLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
 
-                topRow.getChildren().add(nameLabel);
+                nameRow.getChildren().add(nameLabel);
 
                 if (model.isBotChat(chat)) {
-                    Label botBadge = new Label("BOT");
-                    botBadge.getStyleClass().add("bot-badge");
-                    topRow.getChildren().add(botBadge);
+                    Label botBadge = createBotBadge();
+                    nameRow.getChildren().add(botBadge);
                 }
-
-                HBox bottomRow = new HBox(6);
-                bottomRow.setAlignment(Pos.CENTER_LEFT);
 
                 Label lastMessageLabel = new Label();
 
-                if (chat.getLastMessageText() == null || chat.getLastMessageText().isBlank()) {
+                if (isChatTyping(chat)) {
+                    lastMessageLabel.setText("is typing...");
+                    lastMessageLabel.getStyleClass().add("chat-typing-preview-label");
+                } else if (chat.getLastMessageText() == null || chat.getLastMessageText().isBlank()) {
                     lastMessageLabel.setText("No messages yet");
                 } else {
                     lastMessageLabel.setText(chat.getLastMessageText());
                 }
 
-                lastMessageLabel.setStyle(
-                        "-fx-text-fill: #B8BDC7;" +
-                                "-fx-font-size: 12px;"
-                );
-
-                lastMessageLabel.setMaxWidth(90);
+                lastMessageLabel.getStyleClass().add("chat-last-message-label");
+                lastMessageLabel.setMaxWidth(95);
+                lastMessageLabel.setWrapText(false);
                 lastMessageLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
 
-                Label lastMessageTimeLabel = new Label();
+                textBox.getChildren().addAll(nameRow, lastMessageLabel);
 
-                if (chat.getLastMessageTime() != null && !chat.getLastMessageTime().isBlank()) {
-                    lastMessageTimeLabel.setText(chat.getLastMessageTime());
+                VBox infoBox = new VBox(5);
+                infoBox.setAlignment(Pos.TOP_RIGHT);
+                infoBox.setMinWidth(38);
+                infoBox.setPrefWidth(38);
+                infoBox.setMaxWidth(38);
+
+                Label timeLabel = new Label();
+
+                if (chat.getLastMessageTime() == null || chat.getLastMessageTime().isBlank()) {
+                    timeLabel.setText("");
+                } else {
+                    timeLabel.setText(chat.getLastMessageTime());
                 }
 
-                lastMessageTimeLabel.setStyle(
-                        "-fx-text-fill: #8A8F99;" +
-                                "-fx-font-size: 11px;"
-                );
+                timeLabel.getStyleClass().add("chat-time-label");
 
-                bottomRow.getChildren().addAll(
-                        lastMessageLabel,
-                        lastMessageTimeLabel
-                );
+                infoBox.getChildren().add(timeLabel);
 
-                textBox.getChildren().addAll(topRow, bottomRow);
+                if (chat.getUnreadCount() > 0) {
+                    Label unreadLabel = new Label(
+                            String.valueOf(chat.getUnreadCount())
+                    );
+                    unreadLabel.getStyleClass().add("unread-badge");
 
-                root.getChildren().addAll(avatar, textBox);
+                    infoBox.getChildren().add(unreadLabel);
+                }
+
+                root.getChildren().addAll(avatar, textBox, infoBox);
 
                 setText(null);
                 setGraphic(root);
@@ -204,11 +227,7 @@ public class MessengerController {
             }
         });
 
-        if (!model.getChats().isEmpty()) {
-            selectedChat = model.getChats().get(0);
-            contactsListView.getSelectionModel().select(selectedChat);
-            openChat(selectedChat);
-        }
+        showEmptyChatState();
 
         contactsListView.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> {
@@ -220,13 +239,133 @@ public class MessengerController {
         );
 
         messageTextField.setOnAction(event -> onSendButtonClick());
+        messageTextField.textProperty().addListener(
+                (observable, oldValue, newValue) -> sendTypingStatus()
+        );
 
         setupChatContextMenu();
     }
 
     private void openChat(Chat chat) {
-        updateChatHeader(chat);
-        messagesListView.setItems(model.getMessagesForChat(chat));
+        if (chat == null) {
+            return;
+        }
+
+        hideTypingLabel();
+
+        int unreadCountBeforeOpen = chat.getUnreadCount();
+
+        Chat updatedChat = model.resetUnreadCount(chat);
+
+        if (updatedChat != null) {
+            selectedChat = updatedChat;
+        } else {
+            selectedChat = chat;
+        }
+
+        emptyChatBox.setVisible(false);
+        emptyChatBox.setManaged(false);
+
+        chatArea.setVisible(true);
+        chatArea.setManaged(true);
+
+        contactsListView.getSelectionModel().select(selectedChat);
+        contactsListView.refresh();
+
+        updateChatHeader(selectedChat);
+
+        messagesListView.setItems(
+                model.getMessagesForChat(selectedChat)
+        );
+
+        int messageCount = model.getMessagesForChat(selectedChat).size();
+
+        if (messageCount == 0) {
+            return;
+        }
+
+        int scrollIndex;
+
+        if (unreadCountBeforeOpen > 0) {
+            scrollIndex = messageCount - unreadCountBeforeOpen;
+
+            if (scrollIndex < 0) {
+                scrollIndex = 0;
+            }
+
+            scrollMessagesTo(scrollIndex);
+        } else {
+            scrollMessagesToBottom();
+        }
+    }
+
+    private void showEmptyChatState() {
+        hideTypingLabel();
+
+        selectedChat = null;
+
+        contactsListView.getSelectionModel().clearSelection();
+
+        chatArea.setVisible(false);
+        chatArea.setManaged(false);
+
+        emptyChatBox.setVisible(true);
+        emptyChatBox.setManaged(true);
+
+        messagesListView.setItems(null);
+        messageTextField.clear();
+        chatTitleLabel.setText("");
+        chatTitleLabel.setGraphic(null);
+        chatAvatar.getChildren().clear();
+    }
+
+    private void scrollMessagesTo(int index) {
+        Platform.runLater(() -> Platform.runLater(
+                () -> messagesListView.scrollTo(index)
+        ));
+    }
+
+    private void scrollMessagesToBottom() {
+        Platform.runLater(() -> Platform.runLater(() -> {
+            if (messagesListView.getItems() == null) {
+                return;
+            }
+
+            int messageCount = messagesListView.getItems().size();
+
+            if (messageCount == 0) {
+                return;
+            }
+
+            int lastIndex = messageCount - 1;
+
+            messagesListView.scrollTo(lastIndex);
+            messagesListView.applyCss();
+            messagesListView.layout();
+
+            Platform.runLater(() -> {
+                messagesListView.scrollTo(lastIndex);
+
+                ScrollBar verticalScrollBar =
+                        (ScrollBar) messagesListView.lookup(".scroll-bar:vertical");
+
+                if (verticalScrollBar != null) {
+                    verticalScrollBar.setValue(verticalScrollBar.getMax());
+                }
+            });
+        }));
+    }
+
+    private void hideTypingLabel() {
+        if (typingHideDelay != null) {
+            typingHideDelay.stop();
+        }
+
+        if (typingLabel != null) {
+            typingLabel.setText("");
+            typingLabel.setVisible(false);
+            typingLabel.setManaged(true);
+        }
     }
 
     private void updateChatHeader(Chat chat) {
@@ -476,18 +615,8 @@ public class MessengerController {
 
         model.deleteChat(chatToDelete);
 
-        selectedChat = null;
-
-        messagesListView.setItems(null);
-        chatTitleLabel.setText("");
-
         deleteChatOverlay.setVisible(false);
-
-        if (!contactsListView.getItems().isEmpty()) {
-            contactsListView.getSelectionModel().selectFirst();
-            selectedChat = contactsListView.getSelectionModel().getSelectedItem();
-            openChat(selectedChat);
-        }
+        showEmptyChatState();
     }
 
     @FXML
@@ -567,6 +696,33 @@ public class MessengerController {
         createChatErrorLabel.setManaged(true);
     }
 
+    private void sendTypingStatus() {
+        if (selectedChat == null) {
+            return;
+        }
+
+        if (model.isBotChat(selectedChat)) {
+            return;
+        }
+
+        if (selectedChat.getCompanionUserId() == null) {
+            return;
+        }
+
+        String text = messageTextField.getText();
+
+        if (text == null || text.isBlank()) {
+            return;
+        }
+
+        webSocketClient.sendTypingMessage(
+                selectedChat.getId(),
+                Session.getCurrentUser().getId(),
+                selectedChat.getCompanionUserId(),
+                Session.getCurrentUser().getDisplayName()
+        );
+    }
+
     @FXML
     private void onSendButtonClick() {
         if (selectedChat == null) {
@@ -619,9 +775,7 @@ public class MessengerController {
 
         messageTextField.clear();
 
-        messagesListView.scrollTo(
-                model.getMessagesForChat(selectedChat).size() - 1
-        );
+        scrollMessagesToBottom();
     }
 
     private void handleIncomingWebSocketMessage(String json) {
@@ -629,6 +783,11 @@ public class MessengerController {
             IncomingMessage incoming = gson.fromJson(json, IncomingMessage.class);
 
             if (incoming == null) {
+                return;
+            }
+
+            if (incoming.isTyping()) {
+                handleTypingMessage(incoming);
                 return;
             }
 
@@ -688,6 +847,12 @@ public class MessengerController {
                 return;
             }
 
+            hideChatListTyping(chatId);
+
+            if (selectedChat != null && selectedChat.getId() == chatId) {
+                hideTypingLabel();
+            }
+
             int previouslySelectedChatId =
                     selectedChat != null ? selectedChat.getId() : -1;
 
@@ -717,29 +882,21 @@ public class MessengerController {
                         model.addIncomingMessage(incomingChat, incomingMessage);
             }
 
-            contactsListView.refresh();
-
-            Chat selectedAfterUpdate =
-                    model.findChatById(previouslySelectedChatId);
-
-            if (selectedAfterUpdate != null) {
-                selectedChat = selectedAfterUpdate;
-                contactsListView.getSelectionModel().select(selectedChat);
-
-                if (previouslySelectedChatId == chatId) {
-                    messagesListView.setItems(
-                            model.getMessagesForChat(selectedChat)
-                    );
-
-                    messagesListView.scrollTo(
-                            model.getMessagesForChat(selectedChat).size() - 1
-                    );
-                }
-
+            if (updatedIncomingChat == null) {
                 return;
             }
 
-            if (updatedIncomingChat != null && previouslySelectedChatId == chatId) {
+            boolean messageForOpenedChat =
+                    previouslySelectedChatId == updatedIncomingChat.getId();
+
+            if (!messageForOpenedChat) {
+                updatedIncomingChat =
+                        model.increaseUnreadCount(updatedIncomingChat);
+            }
+
+            contactsListView.refresh();
+
+            if (messageForOpenedChat) {
                 selectedChat = updatedIncomingChat;
                 contactsListView.getSelectionModel().select(selectedChat);
 
@@ -747,14 +904,83 @@ public class MessengerController {
                         model.getMessagesForChat(selectedChat)
                 );
 
-                messagesListView.scrollTo(
-                        model.getMessagesForChat(selectedChat).size() - 1
-                );
+                scrollMessagesToBottom();
+
+                return;
+            }
+
+            Chat selectedAfterUpdate =
+                    model.findChatById(previouslySelectedChatId);
+
+            if (selectedAfterUpdate != null) {
+                selectedChat = selectedAfterUpdate;
+                contactsListView.getSelectionModel().select(selectedChat);
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void handleTypingMessage(IncomingMessage incoming) {
+        if (incoming.getSenderId() == Session.getCurrentUser().getId()) {
+            return;
+        }
+
+        showChatListTyping(incoming.getChatId());
+
+        if (selectedChat == null || selectedChat.getId() != incoming.getChatId()) {
+            return;
+        }
+
+        typingLabel.setText("is typing...");
+        typingLabel.setVisible(true);
+        typingLabel.setManaged(true);
+
+        if (typingHideDelay != null) {
+            typingHideDelay.stop();
+        }
+
+        typingHideDelay = new PauseTransition(Duration.seconds(2));
+        typingHideDelay.setOnFinished(event -> hideTypingLabel());
+        typingHideDelay.playFromStart();
+    }
+
+    private boolean isChatTyping(Chat chat) {
+        return chat != null && typingChatIds.contains(chat.getId());
+    }
+
+    private void showChatListTyping(int chatId) {
+        typingChatIds.add(chatId);
+        contactsListView.refresh();
+
+        PauseTransition oldDelay = chatTypingHideDelays.remove(chatId);
+
+        if (oldDelay != null) {
+            oldDelay.stop();
+        }
+
+        PauseTransition delay = new PauseTransition(Duration.seconds(2));
+        delay.setOnFinished(event -> {
+            typingChatIds.remove(chatId);
+            chatTypingHideDelays.remove(chatId);
+            contactsListView.refresh();
+        });
+
+        chatTypingHideDelays.put(chatId, delay);
+        delay.playFromStart();
+    }
+
+    private void hideChatListTyping(int chatId) {
+        typingChatIds.remove(chatId);
+
+        PauseTransition delay = chatTypingHideDelays.remove(chatId);
+
+        if (delay != null) {
+            delay.stop();
+        }
+
+        contactsListView.refresh();
     }
 
     private void showMessage(String title, String text) {

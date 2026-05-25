@@ -54,6 +54,10 @@ public class IncomingMessage {
         return "PRIVATE_MESSAGE".equalsIgnoreCase(type);
     }
 
+    public boolean isTyping() {
+        return "TYPING".equalsIgnoreCase(type);
+    }
+
     public boolean isConnectSuccess() {
         return "CONNECT_SUCCESS".equalsIgnoreCase(type);
     }

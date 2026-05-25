@@ -39,6 +39,31 @@
     -fx-padding: 8 0 8 4;
 }
 
+.typing-label {
+    -fx-text-fill: #A9C4FF;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-min-width: 170px;
+    -fx-pref-width: 170px;
+    -fx-max-width: 170px;
+    -fx-text-overrun: ellipsis;
+}
+
+.empty-chat-box {
+    -fx-background-color: #1E1F22;
+}
+
+.empty-chat-title {
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.empty-chat-subtitle {
+    -fx-text-fill: #AEB4C0;
+    -fx-font-size: 14px;
+}
+
 /* =========================
    LISTS
 ========================= */
@@ -58,7 +83,7 @@
     -fx-background-color: transparent;
     -fx-background-insets: 0;
     -fx-text-fill: #E3E3E3;
-    -fx-padding: 8;
+    -fx-padding: 0;
 }
 
 .list-cell:hover {
@@ -84,7 +109,7 @@
     -fx-background-color: #2B2D31;
     -fx-background-insets: 0;
     -fx-border-color: transparent;
-    -fx-padding: 10;
+    -fx-padding: 10 10 0 10;
 }
 
 .messages-list .viewport {
@@ -258,6 +283,45 @@
     -fx-background-radius: 5;
 }
 
+.chat-cell-root {
+    -fx-padding: 8 6 8 6;
+}
+
+.chat-name-label {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.chat-last-message-label {
+    -fx-text-fill: #B8BDC7;
+    -fx-font-size: 12px;
+}
+
+.chat-typing-preview-label {
+    -fx-text-fill: #A9C4FF;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.chat-time-label {
+    -fx-text-fill: #9AA0AA;
+    -fx-font-size: 11px;
+}
+
+.unread-badge {
+    -fx-background-color: #5B9DFF;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-min-width: 20px;
+    -fx-min-height: 20px;
+    -fx-pref-width: 20px;
+    -fx-pref-height: 20px;
+    -fx-alignment: center;
+    -fx-background-radius: 20px;
+}
+
 /* =========================
    SCROLL BAR
 ========================= */
@@ -279,6 +343,12 @@
 
 .scroll-bar .thumb:hover {
     -fx-background-color: #5A5D64;
+}
+
+.list-view .scroll-bar:horizontal {
+    -fx-opacity: 0;
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
 }
 
 /* =========================
