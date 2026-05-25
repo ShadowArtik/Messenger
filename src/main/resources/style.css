@@ -582,6 +582,29 @@
     -fx-font-weight: bold;
 }
 
+.group-members-list {
+    -fx-background-color: #343740;
+    -fx-background-radius: 14;
+    -fx-border-color: transparent;
+    -fx-padding: 6;
+}
+
+.group-members-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 8 10;
+}
+
+.group-members-list .list-cell:hover {
+    -fx-background-color: #3E424D;
+    -fx-background-radius: 10;
+}
+
+.group-member-checkbox {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
 .primary-button {
     -fx-background-color: #5B9DFF;
     -fx-background-radius: 18;

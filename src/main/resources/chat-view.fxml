@@ -18,8 +18,9 @@
 
                 <Pane HBox.hgrow="ALWAYS"/>
 
-                <Button text="+"
-                        onAction="#onCreateChatClick"
+                <Button fx:id="addChatButton"
+                        text="+"
+                        onAction="#onAddChatButtonClick"
                         styleClass="add-chat-button"/>
             </HBox>
 
@@ -240,6 +241,52 @@
                         <Button text="Save"
                                 onAction="#onConfirmRenameChatClick"
                                 styleClass="primary-button"/>
+                    </HBox>
+
+                </VBox>
+
+            </StackPane>
+
+            <StackPane fx:id="createGroupOverlay"
+                       visible="false"
+                       managed="false"
+                       styleClass="modal-overlay"
+                       onMouseClicked="#onOverlayBackgroundClick">
+
+                <VBox alignment="CENTER_LEFT"
+                      spacing="14"
+                      prefWidth="380"
+                      maxWidth="380"
+                      prefHeight="360"
+                      maxHeight="360"
+                      styleClass="create-chat-dialog"
+                      onMouseClicked="#onModalWindowClick">
+
+                    <Label text="Create group chat"
+                           styleClass="dialog-title"/>
+
+                    <Label text="Enter group name and choose members"
+                           styleClass="dialog-subtitle"/>
+
+                    <TextField fx:id="groupNameField"
+                               promptText="Group name"
+                               styleClass="dialog-input"/>
+
+                    <ListView fx:id="groupMembersListView"
+                              prefHeight="160"
+                              styleClass="group-members-list"/>
+
+                    <HBox alignment="CENTER_RIGHT"
+                          spacing="10">
+
+                        <Button text="Cancel"
+                                onAction="#onCancelCreateGroupClick"
+                                styleClass="secondary-button"/>
+
+                        <Button text="Create"
+                                onAction="#onConfirmCreateGroupClick"
+                                styleClass="primary-button"/>
+
                     </HBox>
 
                 </VBox>

@@ -1,6 +1,7 @@
 package com.example.network;
 
 import com.example.network.dto.ConnectMessage;
+import com.example.network.dto.GroupCreatedMessage;
 import com.example.network.dto.PrivateMessage;
 import com.example.network.dto.ProfileUpdatedMessage;
 import com.example.network.dto.TypingMessage;
@@ -10,6 +11,7 @@ import javafx.application.Platform;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
@@ -114,6 +116,13 @@ public class WebSocketClient {
                 new ProfileUpdatedMessage(userId, displayName);
 
         sendMessage(gson.toJson(profileUpdatedMessage));
+    }
+
+    public void sendGroupCreatedMessage(int chatId, List<Integer> memberIds) {
+        GroupCreatedMessage groupCreatedMessage =
+                new GroupCreatedMessage(chatId, memberIds);
+
+        sendMessage(gson.toJson(groupCreatedMessage));
     }
 
     public void sendMessage(String text) {

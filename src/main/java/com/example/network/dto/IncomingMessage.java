@@ -10,6 +10,7 @@ public class IncomingMessage {
     private int receiverId;
     private int userId;
     private List<Integer> userIds;
+    private List<Integer> memberIds;
     private String senderUsername;
     private String senderDisplayName;
     private String displayName;
@@ -55,6 +56,10 @@ public class IncomingMessage {
         return userIds;
     }
 
+    public List<Integer> getMemberIds() {
+        return memberIds;
+    }
+
     public boolean isPrivateMessage() {
         return "PRIVATE_MESSAGE".equalsIgnoreCase(type);
     }
@@ -81,5 +86,9 @@ public class IncomingMessage {
 
     public boolean isUserProfileUpdated() {
         return "USER_PROFILE_UPDATED".equalsIgnoreCase(type);
+    }
+
+    public boolean isGroupCreated() {
+        return "GROUP_CREATED".equalsIgnoreCase(type);
     }
 }

@@ -3,11 +3,14 @@ package com.example.model;
 import com.example.service.ChatService;
 import com.example.service.MessageService;
 import com.example.service.UserService;
+import com.example.service.result.CreateGroupResponse;
+import com.example.service.result.CreateGroupResult;
 import com.example.service.result.CreateChatResponse;
 import com.example.service.result.CreateChatResult;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
@@ -125,6 +128,99 @@ public class MessengerModel {
                 CreateChatResult.SUCCESS,
                 chat
         );
+    }
+
+    public CreateGroupResponse addGroupChat(String groupName, List<String> usernames) {
+        if (groupName == null || groupName.isBlank()) {
+            return CreateGroupResponse.error(CreateGroupResult.EMPTY_GROUP_NAME);
+        }
+
+        if (usernames == null || usernames.isEmpty()) {
+            return CreateGroupResponse.error(CreateGroupResult.EMPTY_MEMBERS);
+        }
+
+        int currentUserId = Session.getCurrentUser().getId();
+
+        List<Integer> memberIds = new ArrayList<>();
+
+        for (String username : usernames) {
+            if (username == null || username.isBlank()) {
+                continue;
+            }
+
+            String cleanUsername = username.trim();
+
+            User user = userService.findByUsername(cleanUsername);
+
+            if (user == null) {
+                return CreateGroupResponse.userNotFound(cleanUsername);
+            }
+
+            if (user.getId() == currentUserId) {
+                continue;
+            }
+
+            if (!memberIds.contains(user.getId())) {
+                memberIds.add(user.getId());
+            }
+        }
+
+        if (memberIds.isEmpty()) {
+            return CreateGroupResponse.error(CreateGroupResult.ONLY_SELF_SELECTED);
+        }
+
+        Chat groupChat = chatService.createGroupChat(
+                groupName.trim(),
+                currentUserId,
+                memberIds
+        );
+
+        if (groupChat == null) {
+            return CreateGroupResponse.error(CreateGroupResult.DATABASE_ERROR);
+        }
+
+        addChatToMemory(groupChat);
+
+        List<Integer> notificationMemberIds = new ArrayList<>();
+        notificationMemberIds.add(currentUserId);
+        notificationMemberIds.addAll(memberIds);
+
+        return CreateGroupResponse.success(groupChat, notificationMemberIds);
+    }
+
+    public CreateGroupResponse createGroupChat(String groupName, List<Integer> memberIds) {
+        if (groupName == null || groupName.isBlank()) {
+            return CreateGroupResponse.error(CreateGroupResult.EMPTY_GROUP_NAME);
+        }
+
+        if (memberIds == null || memberIds.isEmpty()) {
+            return CreateGroupResponse.error(CreateGroupResult.EMPTY_MEMBERS);
+        }
+
+        int currentUserId = Session.getCurrentUser().getId();
+
+        Chat groupChat = chatService.createGroupChat(
+                groupName.trim(),
+                currentUserId,
+                memberIds
+        );
+
+        if (groupChat == null) {
+            return CreateGroupResponse.error(CreateGroupResult.DATABASE_ERROR);
+        }
+
+        addChatToMemory(groupChat);
+
+        List<Integer> notificationMemberIds = new ArrayList<>();
+        notificationMemberIds.add(currentUserId);
+
+        for (Integer memberId : memberIds) {
+            if (memberId != null && !notificationMemberIds.contains(memberId)) {
+                notificationMemberIds.add(memberId);
+            }
+        }
+
+        return CreateGroupResponse.success(groupChat, notificationMemberIds);
     }
 
     public boolean isBotChat(Chat chat) {

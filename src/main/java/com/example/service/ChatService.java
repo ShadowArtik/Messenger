@@ -49,6 +49,22 @@ public class ChatService {
         );
     }
 
+    public Chat createGroupChat(String groupName, int creatorId, List<Integer> memberIds) {
+        if (groupName == null || groupName.isBlank()) {
+            return null;
+        }
+
+        if (memberIds == null || memberIds.isEmpty()) {
+            return null;
+        }
+
+        return chatRepository.createGroupChat(
+                groupName.trim(),
+                creatorId,
+                memberIds
+        );
+    }
+
     public void updateChatActivity(int chatId) {
         chatRepository.updateChatActivity(chatId);
     }

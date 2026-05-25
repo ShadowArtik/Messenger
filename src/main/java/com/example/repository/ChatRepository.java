@@ -268,6 +268,69 @@ public class ChatRepository {
         return null;
     }
 
+    public Chat createGroupChat(String groupName, int creatorId, List<Integer> memberIds) {
+        String insertChatSql = """
+            INSERT INTO chats (chat_name, chat_type)
+            VALUES (?, 'GROUP')
+            RETURNING id, chat_name, chat_type
+            """;
+
+        String insertMemberSql = """
+            INSERT INTO chat_members (chat_id, user_id)
+            VALUES (?, ?)
+            ON CONFLICT (chat_id, user_id) DO NOTHING
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement chatStatement = connection.prepareStatement(insertChatSql)) {
+                chatStatement.setString(1, groupName);
+
+                ResultSet resultSet = chatStatement.executeQuery();
+
+                if (resultSet.next()) {
+                    int chatId = resultSet.getInt("id");
+
+                    try (PreparedStatement memberStatement = connection.prepareStatement(insertMemberSql)) {
+                        memberStatement.setInt(1, chatId);
+                        memberStatement.setInt(2, creatorId);
+                        memberStatement.executeUpdate();
+
+                        for (Integer memberId : memberIds) {
+                            if (memberId == null) {
+                                continue;
+                            }
+
+                            memberStatement.setInt(1, chatId);
+                            memberStatement.setInt(2, memberId);
+                            memberStatement.executeUpdate();
+                        }
+                    }
+
+                    connection.commit();
+
+                    return new Chat(
+                            chatId,
+                            resultSet.getString("chat_name"),
+                            resultSet.getString("chat_type")
+                    );
+                }
+
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
     public void updateChatActivity(int chatId) {
         String sql = """
             UPDATE chats
