@@ -97,7 +97,8 @@
                                promptText="Enter message"
                                HBox.hgrow="ALWAYS"/>
 
-                    <Button text="Send"
+                    <Button fx:id="sendButton"
+                            text="Send"
                             onAction="#onSendButtonClick"
                             styleClass="send-button"/>
                 </HBox>

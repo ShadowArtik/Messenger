@@ -10,6 +10,7 @@ import com.example.network.dto.IncomingMessage;
 import com.google.gson.Gson;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -72,6 +73,7 @@ public class MessengerController {
     @FXML private StackPane chatAvatar;
     @FXML private TextField messageTextField;
     @FXML private Button menuButton;
+    @FXML private Button sendButton;
 
     private ContextMenu chatContextMenu;
     private MessengerModel model;
@@ -239,6 +241,12 @@ public class MessengerController {
         );
 
         messageTextField.setOnAction(event -> onSendButtonClick());
+        sendButton.disableProperty().bind(
+                Bindings.createBooleanBinding(
+                        () -> messageTextField.getText().trim().isEmpty(),
+                        messageTextField.textProperty()
+                )
+        );
         messageTextField.textProperty().addListener(
                 (observable, oldValue, newValue) -> sendTypingStatus()
         );
@@ -774,6 +782,7 @@ public class MessengerController {
         contactsListView.refresh();
 
         messageTextField.clear();
+        messageTextField.requestFocus();
 
         scrollMessagesToBottom();
     }
