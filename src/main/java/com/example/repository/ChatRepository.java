@@ -331,6 +331,36 @@ public class ChatRepository {
         return null;
     }
 
+    public List<Integer> getChatMemberIdsExcept(int chatId, int excludedUserId) {
+        List<Integer> memberIds = new ArrayList<>();
+
+        String sql = """
+            SELECT user_id
+            FROM chat_members
+            WHERE chat_id = ?
+              AND user_id <> ?
+            ORDER BY user_id ASC
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, chatId);
+            statement.setInt(2, excludedUserId);
+
+            ResultSet resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                memberIds.add(resultSet.getInt("user_id"));
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return memberIds;
+    }
+
     public void updateChatActivity(int chatId) {
         String sql = """
             UPDATE chats

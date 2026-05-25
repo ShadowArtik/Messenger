@@ -227,6 +227,41 @@ public class MessengerModel {
         return chat != null && chat.isBot();
     }
 
+    public boolean isGroupChat(Chat chat) {
+        return chat != null && "GROUP".equalsIgnoreCase(chat.getType());
+    }
+
+    public List<Integer> getGroupReceiverIds(Chat chat) {
+        if (chat == null || !isGroupChat(chat)) {
+            return List.of();
+        }
+
+        return chatService.getChatMemberIdsExcept(
+                chat.getId(),
+                Session.getCurrentUser().getId()
+        );
+    }
+
+    public List<Integer> getReceiverIdsForChat(Chat chat) {
+        if (chat == null) {
+            return List.of();
+        }
+
+        if ("PRIVATE".equalsIgnoreCase(chat.getType())) {
+            if (chat.getCompanionUserId() == null) {
+                return List.of();
+            }
+
+            return List.of(chat.getCompanionUserId());
+        }
+
+        if (isGroupChat(chat)) {
+            return getGroupReceiverIds(chat);
+        }
+
+        return List.of();
+    }
+
     public void renameChat(Chat chat, String newName) {
         if (chat == null) {
             return;

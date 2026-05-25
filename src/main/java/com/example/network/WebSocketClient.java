@@ -2,6 +2,7 @@ package com.example.network;
 
 import com.example.network.dto.ConnectMessage;
 import com.example.network.dto.GroupCreatedMessage;
+import com.example.network.dto.GroupMessage;
 import com.example.network.dto.PrivateMessage;
 import com.example.network.dto.ProfileUpdatedMessage;
 import com.example.network.dto.TypingMessage;
@@ -95,16 +96,36 @@ public class WebSocketClient {
         sendMessage(gson.toJson(privateMessage));
     }
 
+    public void sendGroupMessage(
+            int chatId,
+            int senderId,
+            List<Integer> receiverIds,
+            String senderUsername,
+            String senderDisplayName,
+            String text
+    ) {
+        GroupMessage groupMessage = new GroupMessage(
+                chatId,
+                senderId,
+                receiverIds,
+                senderUsername,
+                senderDisplayName,
+                text
+        );
+
+        sendMessage(gson.toJson(groupMessage));
+    }
+
     public void sendTypingMessage(
             int chatId,
             int senderId,
-            int receiverId,
+            List<Integer> receiverIds,
             String senderDisplayName
     ) {
         TypingMessage typingMessage = new TypingMessage(
                 chatId,
                 senderId,
-                receiverId,
+                receiverIds,
                 senderDisplayName
         );
 
@@ -118,9 +139,14 @@ public class WebSocketClient {
         sendMessage(gson.toJson(profileUpdatedMessage));
     }
 
-    public void sendGroupCreatedMessage(int chatId, List<Integer> memberIds) {
+    public void sendGroupCreatedMessage(
+            int senderId,
+            int chatId,
+            String chatName,
+            List<Integer> memberIds
+    ) {
         GroupCreatedMessage groupCreatedMessage =
-                new GroupCreatedMessage(chatId, memberIds);
+                new GroupCreatedMessage(senderId, chatId, chatName, memberIds);
 
         sendMessage(gson.toJson(groupCreatedMessage));
     }

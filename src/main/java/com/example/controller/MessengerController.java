@@ -47,6 +47,7 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -901,7 +902,9 @@ public class MessengerController {
                 openChat(selectedChat);
 
                 webSocketClient.sendGroupCreatedMessage(
+                        Session.getCurrentUser().getId(),
                         response.getChat().getId(),
+                        response.getChat().getName(),
                         response.getMemberIds()
                 );
 
@@ -1049,20 +1052,22 @@ public class MessengerController {
             return;
         }
 
-        if (selectedChat.getCompanionUserId() == null) {
-            return;
-        }
-
         String text = messageTextField.getText();
 
         if (text == null || text.isBlank()) {
             return;
         }
 
+        List<Integer> receiverIds = model.getReceiverIdsForChat(selectedChat);
+
+        if (receiverIds.isEmpty()) {
+            return;
+        }
+
         webSocketClient.sendTypingMessage(
                 selectedChat.getId(),
                 Session.getCurrentUser().getId(),
-                selectedChat.getCompanionUserId(),
+                receiverIds,
                 Session.getCurrentUser().getDisplayName()
         );
     }
@@ -1099,6 +1104,19 @@ public class MessengerController {
             if (updatedBotChat != null) {
                 selectedChat = updatedBotChat;
                 contactsListView.getSelectionModel().select(selectedChat);
+            }
+        } else if (model.isGroupChat(selectedChat)) {
+            List<Integer> receiverIds = model.getGroupReceiverIds(selectedChat);
+
+            if (!receiverIds.isEmpty()) {
+                webSocketClient.sendGroupMessage(
+                        selectedChat.getId(),
+                        Session.getCurrentUser().getId(),
+                        receiverIds,
+                        Session.getCurrentUser().getUsername(),
+                        Session.getCurrentUser().getDisplayName(),
+                        text
+                );
             }
         } else {
             Integer companionUserId = selectedChat.getCompanionUserId();
@@ -1191,7 +1209,7 @@ public class MessengerController {
                 return;
             }
 
-            if (!incoming.isPrivateMessage()) {
+            if (!incoming.isPrivateMessage() && !incoming.isGroupMessage()) {
                 return;
             }
 

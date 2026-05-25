@@ -65,6 +65,10 @@ public class ChatService {
         );
     }
 
+    public List<Integer> getChatMemberIdsExcept(int chatId, int excludedUserId) {
+        return chatRepository.getChatMemberIdsExcept(chatId, excludedUserId);
+    }
+
     public void updateChatActivity(int chatId) {
         chatRepository.updateChatActivity(chatId);
     }

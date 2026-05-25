@@ -14,6 +14,7 @@ public class IncomingMessage {
     private String senderUsername;
     private String senderDisplayName;
     private String displayName;
+    private String chatName;
     private String text;
 
     public String getType() {
@@ -48,6 +49,10 @@ public class IncomingMessage {
         return displayName;
     }
 
+    public String getChatName() {
+        return chatName;
+    }
+
     public int getUserId() {
         return userId;
     }
@@ -62,6 +67,10 @@ public class IncomingMessage {
 
     public boolean isPrivateMessage() {
         return "PRIVATE_MESSAGE".equalsIgnoreCase(type);
+    }
+
+    public boolean isGroupMessage() {
+        return "GROUP_MESSAGE".equalsIgnoreCase(type);
     }
 
     public boolean isTyping() {
