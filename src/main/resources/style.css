@@ -337,6 +337,20 @@
     -fx-font-size: 11px;
 }
 
+.message-sender-label {
+    -fx-text-fill: #A9C4FF;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.group-message-row {
+    -fx-alignment: TOP_LEFT;
+}
+
+.group-message-content {
+    -fx-padding: 0 0 0 4;
+}
+
 /* =========================
    BOT BADGE
 ========================= */
@@ -599,10 +613,55 @@
     -fx-background-radius: 10;
 }
 
+.members-list-view {
+    -fx-background-color: #343740;
+    -fx-background-radius: 14;
+    -fx-border-color: transparent;
+    -fx-padding: 6;
+}
+
+.members-list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 8 10;
+}
+
+.members-list-view .list-cell:hover {
+    -fx-background-color: #3E424D;
+    -fx-background-radius: 10;
+}
+
+.members-list-view .list-cell:selected {
+    -fx-background-color: #4C5A73;
+    -fx-background-radius: 10;
+}
+
 .group-member-checkbox {
     -fx-text-fill: white;
     -fx-font-size: 13px;
     -fx-font-weight: bold;
+}
+
+.group-info-title {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.modal-small-label {
+    -fx-text-fill: #B8BDC7;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.group-member-name {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.group-member-username {
+    -fx-text-fill: #B8BDC7;
+    -fx-font-size: 12px;
 }
 
 .primary-button {

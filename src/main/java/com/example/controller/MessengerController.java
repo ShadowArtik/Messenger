@@ -33,6 +33,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.ScrollBar;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
@@ -78,6 +79,12 @@ public class MessengerController {
     @FXML
     private StackPane createGroupOverlay;
     @FXML
+    private StackPane groupInfoOverlay;
+    @FXML
+    private StackPane addMembersOverlay;
+    @FXML
+    private StackPane leaveGroupOverlay;
+    @FXML
     private VBox chatArea;
     @FXML
     private VBox emptyChatBox;
@@ -97,6 +104,12 @@ public class MessengerController {
     private TextField groupNameField;
     @FXML
     private ListView<Chat> groupMembersListView;
+    @FXML
+    private Label groupInfoNameLabel;
+    @FXML
+    private ListView<User> groupInfoMembersListView;
+    @FXML
+    private ListView<User> addMembersListView;
 
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
@@ -110,6 +123,9 @@ public class MessengerController {
 
     private ContextMenu chatContextMenu;
     private ContextMenu addChatContextMenu;
+    private MenuItem groupInfoItem;
+    private MenuItem leaveGroupItem;
+    private MenuItem deleteChatItem;
     private MessengerModel model;
     private Chat selectedChat;
     private WebSocketClient webSocketClient;
@@ -250,9 +266,16 @@ public class MessengerController {
                     return;
                 }
 
+                boolean isMine = message.getSenderUsername().equals(
+                        Session.getCurrentUser().getUsername()
+                );
+
+                boolean isGroupChat = selectedChat != null
+                        && "GROUP".equalsIgnoreCase(selectedChat.getType());
+
                 Label textLabel = new Label(message.getText());
                 textLabel.setWrapText(true);
-                textLabel.setMaxWidth(300);
+                textLabel.setMaxWidth(280);
                 textLabel.getStyleClass().add("message-text");
 
                 Label timeLabel = new Label(message.getFormattedTime());
@@ -261,16 +284,50 @@ public class MessengerController {
                 VBox bubble = new VBox(3, textLabel, timeLabel);
                 bubble.getStyleClass().add("message-bubble");
 
-                HBox messageBox = new HBox(bubble);
+                VBox bubbleBox = new VBox(1);
+                HBox messageBox = new HBox(8);
+                messageBox.setFillHeight(false);
 
-                if (message.getSender().equals(
-                        Session.getCurrentUser().getUsername()
-                )) {
-                    messageBox.setAlignment(Pos.CENTER_RIGHT);
+                if (isMine) {
                     bubble.getStyleClass().add("message-bubble-outgoing");
+                    bubbleBox.getChildren().add(bubble);
+
+                    messageBox.setAlignment(Pos.CENTER_RIGHT);
+                    messageBox.getChildren().add(bubbleBox);
+                } else if (isGroupChat) {
+                    Label senderLabel = new Label(message.getSenderDisplayName());
+                    senderLabel.getStyleClass().add("message-sender-label");
+
+                    bubble.getStyleClass().add("message-bubble-incoming");
+
+                    StackPane avatar = createSmallMessageAvatar(
+                            message.getSenderDisplayName()
+                    );
+                    HBox.setMargin(avatar, new Insets(4, 0, 0, 0));
+
+                    Region senderNameIndent = new Region();
+                    senderNameIndent.setPrefWidth(46);
+                    senderNameIndent.setMinWidth(46);
+                    senderNameIndent.setMaxWidth(46);
+
+                    HBox senderRow = new HBox(senderNameIndent, senderLabel);
+                    senderRow.setAlignment(Pos.CENTER_LEFT);
+
+                    HBox bubbleRow = new HBox(8, avatar, bubble);
+                    bubbleRow.setAlignment(Pos.TOP_LEFT);
+
+                    bubbleBox.getChildren().addAll(senderRow, bubbleRow);
+                    bubbleBox.getStyleClass().add("group-message-content");
+
+                    messageBox.setAlignment(Pos.CENTER_LEFT);
+                    messageBox.getStyleClass().add("group-message-row");
+                    messageBox.getChildren().add(bubbleBox);
                 } else {
+                    bubbleBox.getChildren().add(bubble);
+
                     messageBox.setAlignment(Pos.CENTER_LEFT);
                     bubble.getStyleClass().add("message-bubble-incoming");
+                    messageBox.getChildren().add(bubbleBox);
                 }
 
                 setText(null);
@@ -315,6 +372,8 @@ public class MessengerController {
         setupChatContextMenu();
         setupAddChatContextMenu();
         setupGroupMembersList();
+        setupGroupInfoMembersList();
+        setupAddMembersList();
         setupCurrentUserProfile();
     }
 
@@ -543,6 +602,10 @@ public class MessengerController {
         return avatar;
     }
 
+    private StackPane createSmallMessageAvatar(String name) {
+        return createBaseAvatar(name, 15);
+    }
+
     private String getAvatarColor(String name) {
         if (name == null || name.isBlank()) {
             return "#5B9DFF";
@@ -669,6 +732,18 @@ public class MessengerController {
     private void onMenuButtonClick() {
         if (selectedChat == null) {
             return;
+        }
+
+        if (groupInfoItem != null) {
+            groupInfoItem.setVisible(model.isGroupChat(selectedChat));
+        }
+
+        if (leaveGroupItem != null) {
+            leaveGroupItem.setVisible(model.isGroupChat(selectedChat));
+        }
+
+        if (deleteChatItem != null) {
+            deleteChatItem.setVisible(!model.isGroupChat(selectedChat));
         }
 
         if (chatContextMenu.isShowing()) {
@@ -981,6 +1056,84 @@ public class MessengerController {
         });
     }
 
+    private void setupAddMembersList() {
+        addMembersListView.getSelectionModel().setSelectionMode(
+                SelectionMode.MULTIPLE
+        );
+
+        addMembersListView.setCellFactory(listView -> new ListCell<>() {
+
+            @Override
+            protected void updateItem(User user, boolean empty) {
+                super.updateItem(user, empty);
+
+                if (empty || user == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                HBox root = new HBox(10);
+                root.setAlignment(Pos.CENTER_LEFT);
+
+                StackPane avatar = createSmallMemberAvatar(user);
+
+                VBox textBox = new VBox(2);
+
+                Label displayNameLabel = new Label(user.getDisplayName());
+                displayNameLabel.getStyleClass().add("group-member-name");
+
+                Label usernameLabel = new Label("@" + user.getUsername());
+                usernameLabel.getStyleClass().add("group-member-username");
+
+                textBox.getChildren().addAll(displayNameLabel, usernameLabel);
+                root.getChildren().addAll(avatar, textBox);
+
+                setText(null);
+                setGraphic(root);
+            }
+        });
+    }
+
+    private void setupGroupInfoMembersList() {
+        groupInfoMembersListView.setCellFactory(listView -> new ListCell<>() {
+
+            @Override
+            protected void updateItem(User user, boolean empty) {
+                super.updateItem(user, empty);
+
+                if (empty || user == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                setText(null);
+                setGraphic(createMemberRow(user));
+            }
+        });
+    }
+
+    private HBox createMemberRow(User user) {
+        HBox root = new HBox(10);
+        root.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane avatar = createSmallMemberAvatar(user);
+
+        VBox textBox = new VBox(2);
+
+        Label nameLabel = new Label(user.getDisplayName());
+        nameLabel.getStyleClass().add("group-member-name");
+
+        Label usernameLabel = new Label("@" + user.getUsername());
+        usernameLabel.getStyleClass().add("group-member-username");
+
+        textBox.getChildren().addAll(nameLabel, usernameLabel);
+        root.getChildren().addAll(avatar, textBox);
+
+        return root;
+    }
+
     @FXML
     private void onCancelCreateChatClick() {
         hideAllOverlays();
@@ -1086,7 +1239,9 @@ public class MessengerController {
         }
 
         Message userMessage = new Message(
+                Session.getCurrentUser().getId(),
                 Session.getCurrentUser().getUsername(),
+                Session.getCurrentUser().getDisplayName(),
                 text
         );
 
@@ -1209,6 +1364,11 @@ public class MessengerController {
                 return;
             }
 
+            if (incoming.isGroupMembersUpdated()) {
+                handleGroupMembersUpdatedMessage(incoming);
+                return;
+            }
+
             if (!incoming.isPrivateMessage() && !incoming.isGroupMessage()) {
                 return;
             }
@@ -1247,7 +1407,9 @@ public class MessengerController {
 
             if (!messageLoadedByReload) {
                 Message incomingMessage = new Message(
+                        incoming.getSenderId(),
                         incoming.getSenderUsername(),
+                        incoming.getSenderDisplayName(),
                         incoming.getText()
                 );
 
@@ -1362,6 +1524,44 @@ public class MessengerController {
         messagesListView.setItems(model.getMessagesForChat(selectedChat));
     }
 
+    private void handleGroupMembersUpdatedMessage(IncomingMessage incoming) {
+        if (incoming.getMemberIds() == null) {
+            return;
+        }
+
+        int currentUserId = Session.getCurrentUser().getId();
+
+        if (!incoming.getMemberIds().contains(currentUserId)) {
+            return;
+        }
+
+        int selectedChatId = selectedChat != null ? selectedChat.getId() : -1;
+
+        model.reloadChats();
+        contactsListView.refresh();
+
+        if (selectedChatId == -1) {
+            return;
+        }
+
+        Chat updatedSelectedChat = model.findChatById(selectedChatId);
+
+        if (updatedSelectedChat == null) {
+            showEmptyChatState();
+            return;
+        }
+
+        selectedChat = updatedSelectedChat;
+        contactsListView.getSelectionModel().select(selectedChat);
+        updateChatHeader(selectedChat);
+
+        if (selectedChat.getId() == incoming.getChatId()
+                && groupInfoOverlay != null
+                && groupInfoOverlay.isVisible()) {
+            refreshGroupInfoMembers();
+        }
+    }
+
     private void handleTypingMessage(IncomingMessage incoming) {
         if (incoming.getSenderId() == Session.getCurrentUser().getId()) {
             return;
@@ -1432,18 +1632,24 @@ public class MessengerController {
     }
 
     private void setupChatContextMenu() {
+        groupInfoItem = new MenuItem("Group info");
+        leaveGroupItem = new MenuItem("Leave group");
         MenuItem clearChatItem = new MenuItem("Clear chat");
         MenuItem renameChatItem = new MenuItem("Rename");
-        MenuItem deleteChatItem = new MenuItem("Delete chat");
+        deleteChatItem = new MenuItem("Delete chat");
 
+        groupInfoItem.setOnAction(event -> onGroupInfoClick());
+        leaveGroupItem.setOnAction(event -> onLeaveGroupClick());
         clearChatItem.setOnAction(event -> onClearChatClick());
         renameChatItem.setOnAction(event -> onRenameChatClick());
         deleteChatItem.setOnAction(event -> onDeleteChatClick());
 
         chatContextMenu = new ContextMenu(
+                groupInfoItem,
                 clearChatItem,
                 renameChatItem,
-                deleteChatItem
+                deleteChatItem,
+                leaveGroupItem
         );
 
         chatContextMenu.getStyleClass().add("chat-context-menu");
@@ -1479,6 +1685,150 @@ public class MessengerController {
                 -150,
                 6
         );
+    }
+
+    @FXML
+    private void onGroupInfoClick() {
+        hideChatMenu();
+
+        if (selectedChat == null || !model.isGroupChat(selectedChat)) {
+            return;
+        }
+
+        groupInfoNameLabel.setText(selectedChat.getName());
+        refreshGroupInfoMembers();
+
+        groupInfoOverlay.setVisible(true);
+        groupInfoOverlay.setManaged(true);
+        groupInfoOverlay.toFront();
+    }
+
+    private void refreshGroupInfoMembers() {
+        if (selectedChat == null || !model.isGroupChat(selectedChat)) {
+            groupInfoMembersListView.getItems().clear();
+            return;
+        }
+
+        groupInfoMembersListView.getItems().setAll(
+                model.getGroupMembers(selectedChat)
+        );
+    }
+
+    @FXML
+    private void onCloseGroupInfoClick() {
+        hideOverlay(groupInfoOverlay);
+    }
+
+    @FXML
+    private void onAddMembersClick() {
+        if (selectedChat == null || !model.isGroupChat(selectedChat)) {
+            return;
+        }
+
+        List<User> users = model.getUsersNotInChat(selectedChat);
+
+        addMembersListView.getItems().setAll(users);
+        addMembersListView.getSelectionModel().clearSelection();
+
+        hideOverlay(groupInfoOverlay);
+
+        addMembersOverlay.setVisible(true);
+        addMembersOverlay.setManaged(true);
+        addMembersOverlay.toFront();
+    }
+
+    @FXML
+    private void onCancelAddMembersClick() {
+        addMembersListView.getItems().clear();
+        hideOverlay(addMembersOverlay);
+    }
+
+    @FXML
+    private void onConfirmAddMembersClick() {
+        if (selectedChat == null || !model.isGroupChat(selectedChat)) {
+            addMembersListView.getItems().clear();
+            hideOverlay(addMembersOverlay);
+            return;
+        }
+
+        List<User> selectedUsers = new ArrayList<>(
+                addMembersListView.getSelectionModel().getSelectedItems()
+        );
+
+        if (selectedUsers.isEmpty()) {
+            showMessage("Add members", "Please select at least one user.");
+            return;
+        }
+
+        model.addMembersToGroup(selectedChat, selectedUsers);
+
+        List<Integer> receiverIds = selectedUsers.stream()
+                .map(User::getId)
+                .toList();
+
+        webSocketClient.sendGroupCreatedMessage(
+                Session.getCurrentUser().getId(),
+                selectedChat.getId(),
+                selectedChat.getName(),
+                receiverIds
+        );
+
+        addMembersListView.getItems().clear();
+        hideOverlay(addMembersOverlay);
+        onGroupInfoClick();
+    }
+
+    @FXML
+    private void onLeaveGroupClick() {
+        hideChatMenu();
+
+        if (selectedChat == null || !model.isGroupChat(selectedChat)) {
+            return;
+        }
+
+        leaveGroupOverlay.setVisible(true);
+        leaveGroupOverlay.setManaged(true);
+        leaveGroupOverlay.toFront();
+    }
+
+    @FXML
+    private void onCancelLeaveGroupClick() {
+        hideOverlay(leaveGroupOverlay);
+    }
+
+    @FXML
+    private void onConfirmLeaveGroupClick() {
+        if (selectedChat == null) {
+            hideOverlay(leaveGroupOverlay);
+            return;
+        }
+
+        List<Integer> remainingMemberIds = model.getGroupReceiverIds(selectedChat);
+        int leftChatId = selectedChat.getId();
+
+        boolean success = model.leaveGroup(selectedChat);
+
+        if (!success) {
+            hideOverlay(leaveGroupOverlay);
+            showMessage("Error", "Cannot leave this group.");
+            return;
+        }
+
+        if (!remainingMemberIds.isEmpty()) {
+            webSocketClient.sendGroupMembersUpdatedMessage(
+                    Session.getCurrentUser().getId(),
+                    leftChatId,
+                    remainingMemberIds
+            );
+        }
+
+        contactsListView.getSelectionModel().clearSelection();
+        contactsListView.refresh();
+
+        messagesListView.setItems(FXCollections.observableArrayList());
+        showEmptyChatState();
+
+        hideOverlay(leaveGroupOverlay);
     }
 
     @FXML
@@ -1554,6 +1904,9 @@ public class MessengerController {
 
         hideOverlay(createChatOverlay);
         hideOverlay(createGroupOverlay);
+        hideOverlay(groupInfoOverlay);
+        hideOverlay(addMembersOverlay);
+        hideOverlay(leaveGroupOverlay);
         hideOverlay(renameChatOverlay);
         hideOverlay(deleteChatOverlay);
         hideOverlay(clearChatOverlay);
@@ -1566,5 +1919,9 @@ public class MessengerController {
             overlay.setVisible(false);
             overlay.setManaged(false);
         }
+    }
+
+    private StackPane createSmallMemberAvatar(User user) {
+        return createBaseAvatar(user.getDisplayName(), 17);
     }
 }

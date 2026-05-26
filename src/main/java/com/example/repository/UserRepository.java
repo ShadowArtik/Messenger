@@ -5,6 +5,8 @@ import com.example.model.User;
 import com.example.util.PasswordHasher;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserRepository {
 
@@ -163,5 +165,55 @@ public class UserRepository {
         }
 
         return false;
+    }
+
+    public List<User> getUsersNotInChat(int chatId, int currentUserId) {
+        List<User> users = new ArrayList<>();
+
+        String sql = """
+            SELECT DISTINCT u.id,
+                            u.username,
+                            u.display_name
+            FROM users u
+            JOIN chat_members my_private_membership
+                 ON my_private_membership.user_id = ?
+            JOIN chats private_chat
+                 ON private_chat.id = my_private_membership.chat_id
+                AND private_chat.chat_type = 'PRIVATE'
+            JOIN chat_members companion_membership
+                 ON companion_membership.chat_id = private_chat.id
+                AND companion_membership.user_id = u.id
+                AND companion_membership.user_id <> ?
+            WHERE u.username <> 'helper_bot'
+              AND u.id NOT IN (
+                  SELECT user_id
+                  FROM chat_members
+                  WHERE chat_id = ?
+              )
+            ORDER BY u.display_name
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, currentUserId);
+            statement.setInt(2, currentUserId);
+            statement.setInt(3, chatId);
+
+            ResultSet resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                users.add(new User(
+                        resultSet.getInt("id"),
+                        resultSet.getString("username"),
+                        resultSet.getString("display_name")
+                ));
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return users;
     }
 }

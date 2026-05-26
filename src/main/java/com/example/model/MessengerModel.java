@@ -262,6 +262,37 @@ public class MessengerModel {
         return List.of();
     }
 
+    public List<User> getGroupMembers(Chat chat) {
+        if (chat == null || !isGroupChat(chat)) {
+            return List.of();
+        }
+
+        return chatService.getGroupMembers(chat.getId());
+    }
+
+    public List<User> getUsersNotInChat(Chat chat) {
+        if (chat == null || !isGroupChat(chat) || Session.getCurrentUser() == null) {
+            return List.of();
+        }
+
+        return chatService.getUsersNotInChat(
+                chat.getId(),
+                Session.getCurrentUser().getId()
+        );
+    }
+
+    public void addMembersToGroup(Chat chat, List<User> users) {
+        if (chat == null || users == null || users.isEmpty()) {
+            return;
+        }
+
+        List<Integer> userIds = users.stream()
+                .map(User::getId)
+                .toList();
+
+        chatService.addMembersToGroup(chat.getId(), userIds);
+    }
+
     public void renameChat(Chat chat, String newName) {
         if (chat == null) {
             return;
@@ -329,6 +360,26 @@ public class MessengerModel {
         chatMessages.remove(chat.getId());
 
         chatService.deleteChat(chat.getId());
+    }
+
+    public boolean leaveGroup(Chat chat) {
+        if (chat == null || !isGroupChat(chat)) {
+            return false;
+        }
+
+        boolean success = chatService.leaveGroup(
+                chat.getId(),
+                Session.getCurrentUser().getId()
+        );
+
+        if (!success) {
+            return false;
+        }
+
+        chats.remove(chat);
+        chatMessages.remove(chat.getId());
+
+        return true;
     }
 
     public Chat clearChat(Chat chat) {

@@ -100,4 +100,8 @@ public class IncomingMessage {
     public boolean isGroupCreated() {
         return "GROUP_CREATED".equalsIgnoreCase(type);
     }
+
+    public boolean isGroupMembersUpdated() {
+        return "GROUP_MEMBERS_UPDATED".equalsIgnoreCase(type);
+    }
 }

@@ -2,6 +2,7 @@ package com.example.network;
 
 import com.example.network.dto.ConnectMessage;
 import com.example.network.dto.GroupCreatedMessage;
+import com.example.network.dto.GroupMembersUpdatedMessage;
 import com.example.network.dto.GroupMessage;
 import com.example.network.dto.PrivateMessage;
 import com.example.network.dto.ProfileUpdatedMessage;
@@ -149,6 +150,17 @@ public class WebSocketClient {
                 new GroupCreatedMessage(senderId, chatId, chatName, memberIds);
 
         sendMessage(gson.toJson(groupCreatedMessage));
+    }
+
+    public void sendGroupMembersUpdatedMessage(
+            int senderId,
+            int chatId,
+            List<Integer> memberIds
+    ) {
+        GroupMembersUpdatedMessage groupMembersUpdatedMessage =
+                new GroupMembersUpdatedMessage(senderId, chatId, memberIds);
+
+        sendMessage(gson.toJson(groupMembersUpdatedMessage));
     }
 
     public void sendMessage(String text) {

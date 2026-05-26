@@ -1,13 +1,16 @@
 package com.example.service;
 
 import com.example.model.Chat;
+import com.example.model.User;
 import com.example.repository.ChatRepository;
+import com.example.repository.UserRepository;
 
 import java.util.List;
 
 public class ChatService {
 
     private final ChatRepository chatRepository = new ChatRepository();
+    private final UserRepository userRepository = new UserRepository();
 
     public Chat createChat(String name, int userId) {
         return chatRepository.createChat(name, "PRIVATE", userId);
@@ -31,6 +34,15 @@ public class ChatService {
 
     public void deleteChat(int chatId) {
         chatRepository.deleteChat(chatId);
+    }
+
+    public boolean leaveGroup(int chatId, int userId) {
+        if (!chatRepository.isGroupChat(chatId)) {
+            return false;
+        }
+
+        chatRepository.leaveGroup(chatId, userId);
+        return true;
     }
 
     public boolean isBotChat(int chatId) {
@@ -67,6 +79,28 @@ public class ChatService {
 
     public List<Integer> getChatMemberIdsExcept(int chatId, int excludedUserId) {
         return chatRepository.getChatMemberIdsExcept(chatId, excludedUserId);
+    }
+
+    public List<User> getGroupMembers(int chatId) {
+        return chatRepository.getGroupMembers(chatId);
+    }
+
+    public List<User> getUsersNotInChat(int chatId, int currentUserId) {
+        return userRepository.getUsersNotInChat(chatId, currentUserId);
+    }
+
+    public void addMembersToGroup(int chatId, List<Integer> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+
+        for (Integer userId : userIds) {
+            if (userId != null) {
+                chatRepository.addMemberToChat(chatId, userId);
+            }
+        }
+
+        chatRepository.updateChatActivity(chatId);
     }
 
     public void updateChatActivity(int chatId) {

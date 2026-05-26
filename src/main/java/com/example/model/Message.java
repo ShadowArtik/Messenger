@@ -6,27 +6,60 @@ import java.time.format.DateTimeFormatter;
 
 public class Message {
 
-    private final String sender;
+    private final Integer senderId;
+    private final String senderUsername;
+    private final String senderDisplayName;
     private final String text;
     private final String time;
 
-    public Message(String sender, String text) {
-        this.sender = sender;
-        this.text = text;
-
-        this.time = ZonedDateTime
-                .now(ZoneId.of("Europe/Kyiv"))
-                .format(DateTimeFormatter.ofPattern("HH:mm"));
+    public Message(String senderUsername, String text) {
+        this(null, senderUsername, senderUsername, text);
     }
 
-    public Message(String sender, String text, String time) {
-        this.sender = sender;
+    public Message(Integer senderId, String senderUsername, String senderDisplayName, String text) {
+        this(
+                senderId,
+                senderUsername,
+                senderDisplayName,
+                text,
+                ZonedDateTime
+                .now(ZoneId.of("Europe/Kyiv"))
+                .format(DateTimeFormatter.ofPattern("HH:mm"))
+        );
+    }
+
+    public Message(String senderUsername, String text, String time) {
+        this(null, senderUsername, senderUsername, text, time);
+    }
+
+    public Message(
+            Integer senderId,
+            String senderUsername,
+            String senderDisplayName,
+            String text,
+            String time
+    ) {
+        this.senderId = senderId;
+        this.senderUsername = senderUsername;
+        this.senderDisplayName = senderDisplayName;
         this.text = text;
         this.time = time;
     }
 
     public String getSender() {
-        return sender;
+        return senderUsername;
+    }
+
+    public Integer getSenderId() {
+        return senderId;
+    }
+
+    public String getSenderUsername() {
+        return senderUsername;
+    }
+
+    public String getSenderDisplayName() {
+        return senderDisplayName;
     }
 
     public String getText() {
@@ -39,6 +72,6 @@ public class Message {
 
     @Override
     public String toString() {
-        return "[" + getFormattedTime() + "] " + sender + ": " + text;
+        return "[" + getFormattedTime() + "] " + senderUsername + ": " + text;
     }
 }

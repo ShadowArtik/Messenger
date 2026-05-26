@@ -35,7 +35,11 @@ public class MessageRepository {
         List<Message> messages = new ArrayList<>();
 
         String sql = """
-                SELECT u.username, m.text, m.created_at
+                SELECT u.id AS sender_id,
+                       u.username,
+                       u.display_name,
+                       m.text,
+                       m.created_at
                 FROM messages m
                 JOIN users u ON m.sender_id = u.id
                 WHERE m.chat_id = ?
@@ -57,7 +61,9 @@ public class MessageRepository {
                         .format(DateTimeFormatter.ofPattern("HH:mm"));
 
                 messages.add(new Message(
+                        resultSet.getInt("sender_id"),
                         resultSet.getString("username"),
+                        resultSet.getString("display_name"),
                         resultSet.getString("text"),
                         time
                 ));
