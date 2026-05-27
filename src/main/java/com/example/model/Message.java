@@ -6,6 +6,8 @@ import java.time.format.DateTimeFormatter;
 
 public class Message {
 
+    private static final String SYSTEM_PREFIX = "[SYSTEM] ";
+
     private final Integer senderId;
     private final String senderUsername;
     private final String senderDisplayName;
@@ -63,11 +65,45 @@ public class Message {
     }
 
     public String getText() {
+        if (isStoredSystemText(text)) {
+            return text.substring(SYSTEM_PREFIX.length());
+        }
+
+        return text;
+    }
+
+    public String getStorageText() {
         return text;
     }
 
     public String getFormattedTime() {
         return time;
+    }
+
+    public boolean isSystem() {
+        return "system".equalsIgnoreCase(senderUsername)
+                || isStoredSystemText(text);
+    }
+
+    public static Message system(String text) {
+        return new Message(
+                null,
+                "system",
+                "System",
+                SYSTEM_PREFIX + text
+        );
+    }
+
+    public static String cleanSystemText(String text) {
+        if (isStoredSystemText(text)) {
+            return text.substring(SYSTEM_PREFIX.length());
+        }
+
+        return text;
+    }
+
+    private static boolean isStoredSystemText(String text) {
+        return text != null && text.startsWith(SYSTEM_PREFIX);
     }
 
     @Override

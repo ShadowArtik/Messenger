@@ -113,6 +113,7 @@ public class MessengerController {
 
     @FXML private ListView<Message> messagesListView;
     @FXML private Label chatTitleLabel;
+    @FXML private Label chatSubtitleLabel;
     @FXML private Label typingLabel;
     @FXML private Label clearChatSearchLabel;
     @FXML private StackPane chatAvatar;
@@ -120,11 +121,13 @@ public class MessengerController {
     @FXML private Button menuButton;
     @FXML private Button sendButton;
     @FXML private Button addChatButton;
+    @FXML private Button addMembersButton;
 
     private ContextMenu chatContextMenu;
     private ContextMenu addChatContextMenu;
     private MenuItem groupInfoItem;
     private MenuItem leaveGroupItem;
+    private MenuItem renameChatItem;
     private MenuItem deleteChatItem;
     private MessengerModel model;
     private Chat selectedChat;
@@ -288,7 +291,11 @@ public class MessengerController {
                 HBox messageBox = new HBox(8);
                 messageBox.setFillHeight(false);
 
-                if (isMine) {
+                if (message.isSystem()) {
+                    bubble.getStyleClass().add("message-bubble-system");
+                    messageBox.setAlignment(Pos.CENTER);
+                    messageBox.getChildren().add(bubble);
+                } else if (isMine) {
                     bubble.getStyleClass().add("message-bubble-outgoing");
                     bubbleBox.getChildren().add(bubble);
 
@@ -533,6 +540,7 @@ public class MessengerController {
 
         chatTitleLabel.setText(name);
         chatTitleLabel.setGraphic(null);
+        updateChatSubtitle(chat);
 
         if (model.isBotChat(chat)) {
             Label titleLabel = new Label(name);
@@ -553,14 +561,34 @@ public class MessengerController {
         chatAvatar.getChildren().add(createAvatar(chat, 20));
     }
 
+    private void updateChatSubtitle(Chat chat) {
+        if (chatSubtitleLabel == null) {
+            return;
+        }
+
+        if (model.isGroupChat(chat)) {
+            int membersCount = model.getGroupMembers(chat).size();
+            String membersText = membersCount == 1
+                    ? "1 member"
+                    : membersCount + " members";
+
+            chatSubtitleLabel.setText(membersText);
+            chatSubtitleLabel.setVisible(true);
+            chatSubtitleLabel.setManaged(true);
+            return;
+        }
+
+        chatSubtitleLabel.setText("");
+        chatSubtitleLabel.setVisible(false);
+        chatSubtitleLabel.setManaged(false);
+    }
+
     private StackPane createAvatar(Chat chat, double radius) {
         String name = chat.getName();
 
         StackPane avatar = createBaseAvatar(name, radius);
 
-        if (!model.isBotChat(chat)
-                && chat.getCompanionUserId() != null
-                && model.isUserOnline(chat.getCompanionUserId())) {
+        if (model.isChatOnline(chat)) {
 
             double statusDotSize = Math.max(12, radius * 0.52);
 
@@ -746,6 +774,13 @@ public class MessengerController {
             deleteChatItem.setVisible(!model.isGroupChat(selectedChat));
         }
 
+        if (renameChatItem != null) {
+            renameChatItem.setVisible(
+                    !model.isGroupChat(selectedChat)
+                            || model.canManageGroup(selectedChat)
+            );
+        }
+
         if (chatContextMenu.isShowing()) {
             chatContextMenu.hide();
         } else {
@@ -801,6 +836,11 @@ public class MessengerController {
             return;
         }
 
+        if (model.isGroupChat(selectedChat) && !model.canManageGroup(selectedChat)) {
+            showRenameChatError("Only group owner or admins can rename this group.");
+            return;
+        }
+
         renameChatNameField.setText(selectedChat.getName());
 
         renameChatErrorLabel.setText("");
@@ -844,10 +884,55 @@ public class MessengerController {
             return;
         }
 
-        model.renameChat(selectedChat, newName);
+        boolean renamedGroup = model.isGroupChat(selectedChat);
+        String oldName = selectedChat.getName();
+        List<Integer> receiverIds = renamedGroup
+                ? model.getGroupReceiverIds(selectedChat)
+                : List.of();
 
-        selectedChat = contactsListView.getSelectionModel().getSelectedItem();
+        Chat renamedChat = model.renameChat(selectedChat, newName);
 
+        if (renamedChat == null) {
+            showRenameChatError("Could not rename this chat.");
+            return;
+        }
+
+        selectedChat = renamedChat;
+
+        if (renamedGroup) {
+            String systemText = Session.getCurrentUser().getDisplayName()
+                    + " renamed the group to " + newName;
+
+            Chat updatedChat = model.addSystemMessage(
+                    selectedChat,
+                    systemText,
+                    Session.getCurrentUser().getId()
+            );
+
+            if (updatedChat != null) {
+                selectedChat = updatedChat;
+            }
+
+            if (!receiverIds.isEmpty()) {
+                webSocketClient.sendGroupRenamedMessage(
+                        Session.getCurrentUser().getId(),
+                        selectedChat.getId(),
+                        oldName,
+                        newName,
+                        receiverIds,
+                        systemText
+                );
+
+                webSocketClient.sendGroupMembersUpdatedMessage(
+                        Session.getCurrentUser().getId(),
+                        selectedChat.getId(),
+                        receiverIds,
+                        systemText
+                );
+            }
+        }
+
+        contactsListView.getSelectionModel().select(selectedChat);
         openChat(selectedChat);
         contactsListView.refresh();
 
@@ -1117,21 +1202,219 @@ public class MessengerController {
     private HBox createMemberRow(User user) {
         HBox root = new HBox(10);
         root.setAlignment(Pos.CENTER_LEFT);
+        root.setMaxWidth(Double.MAX_VALUE);
 
         StackPane avatar = createSmallMemberAvatar(user);
 
         VBox textBox = new VBox(2);
+        HBox.setHgrow(textBox, Priority.ALWAYS);
+
+        HBox nameRow = new HBox(6);
+        nameRow.setAlignment(Pos.CENTER_LEFT);
 
         Label nameLabel = new Label(user.getDisplayName());
         nameLabel.getStyleClass().add("group-member-name");
 
+        nameRow.getChildren().add(nameLabel);
+
+        Label roleBadge = createRoleBadge(user.getMemberRole());
+
+        if (roleBadge != null) {
+            nameRow.getChildren().add(roleBadge);
+        }
+
         Label usernameLabel = new Label("@" + user.getUsername());
         usernameLabel.getStyleClass().add("group-member-username");
 
-        textBox.getChildren().addAll(nameLabel, usernameLabel);
+        textBox.getChildren().addAll(nameRow, usernameLabel);
         root.getChildren().addAll(avatar, textBox);
 
+        HBox actionsBox = new HBox(6);
+        actionsBox.setAlignment(Pos.CENTER_RIGHT);
+
+        if (canShowRoleAction(user)) {
+            Button roleButton = new Button(getRoleActionText(user));
+            roleButton.getStyleClass().add("member-role-button");
+            roleButton.setOnAction(event -> onToggleMemberRoleClick(user));
+            actionsBox.getChildren().add(roleButton);
+        }
+
+        if (model.canTransferOwnership(selectedChat, user)) {
+            Button ownerButton = new Button("Make owner");
+            ownerButton.getStyleClass().add("member-role-button");
+            ownerButton.setOnAction(event -> onTransferOwnerClick(user));
+            actionsBox.getChildren().add(ownerButton);
+        }
+
+        if (model.canKickGroupMember(selectedChat, user)) {
+            Button kickButton = new Button("Kick");
+            kickButton.getStyleClass().add("member-kick-button");
+            kickButton.setOnAction(event -> onKickGroupMemberClick(user));
+            actionsBox.getChildren().add(kickButton);
+        }
+
+        if (!actionsBox.getChildren().isEmpty()) {
+            root.getChildren().add(actionsBox);
+        }
+
         return root;
+    }
+
+    private Label createRoleBadge(String role) {
+        if (role == null || "MEMBER".equalsIgnoreCase(role)) {
+            return null;
+        }
+
+        Label roleBadge = new Label(role.toUpperCase());
+        roleBadge.getStyleClass().add("group-member-role-badge");
+
+        if ("OWNER".equalsIgnoreCase(role)) {
+            roleBadge.getStyleClass().add("owner-role-badge");
+        } else if ("ADMIN".equalsIgnoreCase(role)) {
+            roleBadge.getStyleClass().add("admin-role-badge");
+        }
+
+        return roleBadge;
+    }
+
+    private boolean canShowRoleAction(User user) {
+        return selectedChat != null
+                && model.canManageGroupRoles(selectedChat)
+                && user.getId() != Session.getCurrentUser().getId()
+                && !"OWNER".equalsIgnoreCase(user.getMemberRole());
+    }
+
+    private String getRoleActionText(User user) {
+        if ("ADMIN".equalsIgnoreCase(user.getMemberRole())) {
+            return "Remove admin";
+        }
+
+        return "Make admin";
+    }
+
+    private void onToggleMemberRoleClick(User user) {
+        if (selectedChat == null || user == null) {
+            return;
+        }
+
+        String newRole = "ADMIN".equalsIgnoreCase(user.getMemberRole())
+                ? "MEMBER"
+                : "ADMIN";
+
+        boolean updated = model.updateGroupMemberRole(selectedChat, user, newRole);
+
+        if (!updated) {
+            showMessage("Group roles", "Could not update this member role.");
+            return;
+        }
+
+        String roleText = "ADMIN".equalsIgnoreCase(newRole)
+                ? user.getDisplayName() + " is now an admin"
+                : user.getDisplayName() + " is no longer an admin";
+
+        model.addSystemMessage(
+                selectedChat,
+                roleText,
+                Session.getCurrentUser().getId()
+        );
+
+        List<Integer> receiverIds = model.getGroupReceiverIds(selectedChat);
+
+        if (!receiverIds.isEmpty()) {
+            webSocketClient.sendGroupMembersUpdatedMessage(
+                    Session.getCurrentUser().getId(),
+                    selectedChat.getId(),
+                    receiverIds,
+                    roleText
+            );
+        }
+
+        refreshGroupInfoMembers();
+        contactsListView.refresh();
+    }
+
+    private void onTransferOwnerClick(User user) {
+        if (selectedChat == null || user == null) {
+            return;
+        }
+
+        boolean transferred = model.transferOwnership(selectedChat, user);
+
+        if (!transferred) {
+            showMessage("Group owner", "Could not transfer ownership.");
+            return;
+        }
+
+        String systemText = Session.getCurrentUser().getDisplayName()
+                + " made "
+                + user.getDisplayName()
+                + " the group owner";
+
+        Chat updatedChat = model.addSystemMessage(
+                selectedChat,
+                systemText,
+                Session.getCurrentUser().getId()
+        );
+
+        if (updatedChat != null) {
+            selectedChat = updatedChat;
+        }
+
+        List<Integer> receiverIds = model.getGroupReceiverIds(selectedChat);
+
+        if (!receiverIds.isEmpty()) {
+            webSocketClient.sendGroupMembersUpdatedMessage(
+                    Session.getCurrentUser().getId(),
+                    selectedChat.getId(),
+                    receiverIds,
+                    systemText
+            );
+        }
+
+        refreshGroupInfoMembers();
+        contactsListView.refresh();
+        messagesListView.setItems(model.getMessagesForChat(selectedChat));
+        scrollMessagesToBottom();
+    }
+
+    private void onKickGroupMemberClick(User user) {
+        if (selectedChat == null || user == null) {
+            return;
+        }
+
+        List<Integer> receiverIds = model.getGroupReceiverIds(selectedChat);
+        String systemText = user.getDisplayName() + " was removed from the group";
+
+        Chat updatedChat = model.addSystemMessage(
+                selectedChat,
+                systemText,
+                Session.getCurrentUser().getId()
+        );
+
+        if (updatedChat != null) {
+            selectedChat = updatedChat;
+        }
+
+        boolean kicked = model.kickGroupMember(selectedChat, user);
+
+        if (!kicked) {
+            showMessage("Group members", "Could not remove this member.");
+            return;
+        }
+
+        if (!receiverIds.isEmpty()) {
+            webSocketClient.sendGroupMembersUpdatedMessage(
+                    Session.getCurrentUser().getId(),
+                    selectedChat.getId(),
+                    receiverIds,
+                    systemText
+            );
+        }
+
+        refreshGroupInfoMembers();
+        contactsListView.refresh();
+        messagesListView.setItems(model.getMessagesForChat(selectedChat));
+        scrollMessagesToBottom();
     }
 
     @FXML
@@ -1369,6 +1652,11 @@ public class MessengerController {
                 return;
             }
 
+            if (incoming.isGroupRenamed()) {
+                handleGroupRenamedMessage(incoming);
+                return;
+            }
+
             if (!incoming.isPrivateMessage() && !incoming.isGroupMessage()) {
                 return;
             }
@@ -1540,26 +1828,109 @@ public class MessengerController {
         model.reloadChats();
         contactsListView.refresh();
 
-        if (selectedChatId == -1) {
-            return;
-        }
+        Chat eventChat = model.findChatById(incoming.getChatId());
 
-        Chat updatedSelectedChat = model.findChatById(selectedChatId);
+        Chat updatedSelectedChat = selectedChatId == -1
+                ? null
+                : model.findChatById(selectedChatId);
 
-        if (updatedSelectedChat == null) {
+        if (selectedChatId != -1 && updatedSelectedChat == null) {
             showEmptyChatState();
             return;
         }
 
-        selectedChat = updatedSelectedChat;
-        contactsListView.getSelectionModel().select(selectedChat);
-        updateChatHeader(selectedChat);
+        if (eventChat != null && selectedChatId == eventChat.getId()) {
+            selectedChat = eventChat;
+            contactsListView.getSelectionModel().select(selectedChat);
+            updateChatHeader(selectedChat);
+            messagesListView.setItems(model.getMessagesForChat(selectedChat));
+            scrollMessagesToBottom();
+        } else {
+            if (updatedSelectedChat != null) {
+                selectedChat = updatedSelectedChat;
+                contactsListView.getSelectionModel().select(selectedChat);
+                updateChatHeader(selectedChat);
+                messagesListView.setItems(model.getMessagesForChat(selectedChat));
+            }
 
-        if (selectedChat.getId() == incoming.getChatId()
+        }
+
+        if (selectedChat != null
+                && selectedChat.getId() == incoming.getChatId()
                 && groupInfoOverlay != null
                 && groupInfoOverlay.isVisible()) {
             refreshGroupInfoMembers();
         }
+
+        String systemMessageText = incoming.getSystemMessageText();
+
+        if (eventChat != null
+                && selectedChatId != eventChat.getId()
+                && systemMessageText != null
+                && !systemMessageText.isBlank()) {
+            model.increaseUnreadCount(eventChat);
+        }
+
+        contactsListView.refresh();
+    }
+
+    private void handleGroupRenamedMessage(IncomingMessage incoming) {
+        if (incoming.getMemberIds() == null) {
+            return;
+        }
+
+        int currentUserId = Session.getCurrentUser().getId();
+
+        if (!incoming.getMemberIds().contains(currentUserId)) {
+            return;
+        }
+
+        int selectedChatId = selectedChat != null ? selectedChat.getId() : -1;
+
+        model.reloadChats();
+        contactsListView.refresh();
+
+        Chat eventChat = model.findChatById(incoming.getChatId());
+        Chat updatedSelectedChat = selectedChatId == -1
+                ? null
+                : model.findChatById(selectedChatId);
+
+        if (selectedChatId != -1 && updatedSelectedChat == null) {
+            showEmptyChatState();
+            return;
+        }
+
+        if (eventChat != null && selectedChatId == eventChat.getId()) {
+            selectedChat = eventChat;
+            contactsListView.getSelectionModel().select(selectedChat);
+            updateChatHeader(selectedChat);
+            messagesListView.setItems(model.getMessagesForChat(selectedChat));
+            scrollMessagesToBottom();
+        } else if (updatedSelectedChat != null) {
+            selectedChat = updatedSelectedChat;
+            contactsListView.getSelectionModel().select(selectedChat);
+            updateChatHeader(selectedChat);
+            messagesListView.setItems(model.getMessagesForChat(selectedChat));
+        }
+
+        if (selectedChat != null
+                && selectedChat.getId() == incoming.getChatId()
+                && groupInfoOverlay != null
+                && groupInfoOverlay.isVisible()) {
+            groupInfoNameLabel.setText(selectedChat.getName());
+            refreshGroupInfoMembers();
+        }
+
+        String systemMessageText = incoming.getSystemMessageText();
+
+        if (eventChat != null
+                && selectedChatId != eventChat.getId()
+                && systemMessageText != null
+                && !systemMessageText.isBlank()) {
+            model.increaseUnreadCount(eventChat);
+        }
+
+        contactsListView.refresh();
     }
 
     private void handleTypingMessage(IncomingMessage incoming) {
@@ -1635,7 +2006,7 @@ public class MessengerController {
         groupInfoItem = new MenuItem("Group info");
         leaveGroupItem = new MenuItem("Leave group");
         MenuItem clearChatItem = new MenuItem("Clear chat");
-        MenuItem renameChatItem = new MenuItem("Rename");
+        renameChatItem = new MenuItem("Rename");
         deleteChatItem = new MenuItem("Delete chat");
 
         groupInfoItem.setOnAction(event -> onGroupInfoClick());
@@ -1696,6 +2067,10 @@ public class MessengerController {
         }
 
         groupInfoNameLabel.setText(selectedChat.getName());
+        boolean canAddMembers = model.canManageGroup(selectedChat);
+        addMembersButton.setVisible(canAddMembers);
+        addMembersButton.setManaged(canAddMembers);
+
         refreshGroupInfoMembers();
 
         groupInfoOverlay.setVisible(true);
@@ -1721,7 +2096,9 @@ public class MessengerController {
 
     @FXML
     private void onAddMembersClick() {
-        if (selectedChat == null || !model.isGroupChat(selectedChat)) {
+        if (selectedChat == null
+                || !model.isGroupChat(selectedChat)
+                || !model.canManageGroup(selectedChat)) {
             return;
         }
 
@@ -1762,20 +2139,59 @@ public class MessengerController {
 
         model.addMembersToGroup(selectedChat, selectedUsers);
 
-        List<Integer> receiverIds = selectedUsers.stream()
+        List<Integer> newMemberIds = selectedUsers.stream()
                 .map(User::getId)
                 .toList();
+
+        String joinedText = buildMembersJoinedText(selectedUsers);
+
+        Chat updatedChat = model.addSystemMessage(
+                selectedChat,
+                joinedText,
+                Session.getCurrentUser().getId()
+        );
+
+        if (updatedChat != null) {
+            selectedChat = updatedChat;
+            contactsListView.getSelectionModel().select(selectedChat);
+            messagesListView.setItems(model.getMessagesForChat(selectedChat));
+            scrollMessagesToBottom();
+        }
 
         webSocketClient.sendGroupCreatedMessage(
                 Session.getCurrentUser().getId(),
                 selectedChat.getId(),
                 selectedChat.getName(),
-                receiverIds
+                newMemberIds
         );
+
+        List<Integer> updatedMemberIds = model.getGroupReceiverIds(selectedChat);
+
+        if (!updatedMemberIds.isEmpty()) {
+            webSocketClient.sendGroupMembersUpdatedMessage(
+                    Session.getCurrentUser().getId(),
+                    selectedChat.getId(),
+                    updatedMemberIds,
+                    joinedText
+            );
+        }
 
         addMembersListView.getItems().clear();
         hideOverlay(addMembersOverlay);
         onGroupInfoClick();
+    }
+
+    private String buildMembersJoinedText(List<User> users) {
+        if (users.size() == 1) {
+            return users.get(0).getDisplayName() + " joined the group";
+        }
+
+        String names = users.stream()
+                .map(User::getDisplayName)
+                .reduce((first, second) -> first + ", " + second)
+                .orElse("Members");
+
+        return names + " joined the group";
     }
 
     @FXML
@@ -1803,8 +2219,28 @@ public class MessengerController {
             return;
         }
 
+        if (!model.canCurrentOwnerLeaveGroup(selectedChat)) {
+            hideOverlay(leaveGroupOverlay);
+            showMessage(
+                    "Leave group",
+                    "You are the owner of this group. Make another member the owner before leaving."
+            );
+            return;
+        }
+
         List<Integer> remainingMemberIds = model.getGroupReceiverIds(selectedChat);
         int leftChatId = selectedChat.getId();
+        String leftText = Session.getCurrentUser().getDisplayName() + " left the group";
+
+        Chat updatedChat = model.addSystemMessage(
+                selectedChat,
+                leftText,
+                Session.getCurrentUser().getId()
+        );
+
+        if (updatedChat != null) {
+            selectedChat = updatedChat;
+        }
 
         boolean success = model.leaveGroup(selectedChat);
 
@@ -1818,7 +2254,8 @@ public class MessengerController {
             webSocketClient.sendGroupMembersUpdatedMessage(
                     Session.getCurrentUser().getId(),
                     leftChatId,
-                    remainingMemberIds
+                    remainingMemberIds,
+                    leftText
             );
         }
 
@@ -1922,6 +2359,18 @@ public class MessengerController {
     }
 
     private StackPane createSmallMemberAvatar(User user) {
-        return createBaseAvatar(user.getDisplayName(), 17);
+        StackPane avatar = createBaseAvatar(user.getDisplayName(), 17);
+
+        if (model.isUserOnline(user.getId())) {
+            Region statusDot = new Region();
+            statusDot.setPrefSize(10, 10);
+            statusDot.setMaxSize(10, 10);
+            statusDot.getStyleClass().add("online-status-dot");
+
+            StackPane.setAlignment(statusDot, Pos.BOTTOM_RIGHT);
+            avatar.getChildren().add(statusDot);
+        }
+
+        return avatar;
     }
 }

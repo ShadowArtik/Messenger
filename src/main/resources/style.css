@@ -93,6 +93,13 @@
     -fx-text-overrun: ellipsis;
 }
 
+.chat-subtitle {
+    -fx-text-fill: #9CA3AF;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 6 4;
+}
+
 .empty-chat-box {
     -fx-background-color: #1E1F22;
 }
@@ -325,6 +332,13 @@
 
 .message-bubble-incoming {
     -fx-background-color: #3A3D41;
+}
+
+.message-bubble-system {
+    -fx-background-color: #3A3D44;
+    -fx-background-radius: 14;
+    -fx-padding: 7 12 7 12;
+    -fx-opacity: 0.92;
 }
 
 .message-text {
@@ -662,6 +676,50 @@
 .group-member-username {
     -fx-text-fill: #B8BDC7;
     -fx-font-size: 12px;
+}
+
+.group-member-role-badge {
+    -fx-text-fill: white;
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-padding: 2 5;
+}
+
+.owner-role-badge {
+    -fx-background-color: #F5A524;
+}
+
+.admin-role-badge {
+    -fx-background-color: #5B9DFF;
+}
+
+.member-role-button {
+    -fx-background-color: #343740;
+    -fx-background-radius: 12;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 6 9;
+    -fx-cursor: hand;
+}
+
+.member-role-button:hover {
+    -fx-background-color: #454852;
+}
+
+.member-kick-button {
+    -fx-background-color: #4A2D35;
+    -fx-background-radius: 12;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 6 9;
+    -fx-cursor: hand;
+}
+
+.member-kick-button:hover {
+    -fx-background-color: #673743;
 }
 
 .primary-button {

@@ -14,7 +14,10 @@ public class IncomingMessage {
     private String senderUsername;
     private String senderDisplayName;
     private String displayName;
+    private String systemMessageText;
     private String chatName;
+    private String oldName;
+    private String newName;
     private String text;
 
     public String getType() {
@@ -49,8 +52,20 @@ public class IncomingMessage {
         return displayName;
     }
 
+    public String getSystemMessageText() {
+        return systemMessageText;
+    }
+
     public String getChatName() {
         return chatName;
+    }
+
+    public String getOldName() {
+        return oldName;
+    }
+
+    public String getNewName() {
+        return newName;
     }
 
     public int getUserId() {
@@ -71,6 +86,10 @@ public class IncomingMessage {
 
     public boolean isGroupMessage() {
         return "GROUP_MESSAGE".equalsIgnoreCase(type);
+    }
+
+    public boolean isGroupSystemMessage() {
+        return "GROUP_SYSTEM_MESSAGE".equalsIgnoreCase(type);
     }
 
     public boolean isTyping() {
@@ -103,5 +122,9 @@ public class IncomingMessage {
 
     public boolean isGroupMembersUpdated() {
         return "GROUP_MEMBERS_UPDATED".equalsIgnoreCase(type);
+    }
+
+    public boolean isGroupRenamed() {
+        return "GROUP_RENAMED".equalsIgnoreCase(type);
     }
 }

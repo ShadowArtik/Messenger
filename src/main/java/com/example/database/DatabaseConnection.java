@@ -64,6 +64,32 @@ public class DatabaseConnection {
         );
         """;
 
+        String addMemberRoleSql = """
+        ALTER TABLE chat_members
+        ADD COLUMN IF NOT EXISTS member_role VARCHAR(20) NOT NULL DEFAULT 'MEMBER';
+        """;
+
+        String ensureGroupOwnerSql = """
+        UPDATE chat_members cm
+        SET member_role = 'OWNER'
+        FROM (
+            SELECT cm2.chat_id,
+                   MIN(cm2.user_id) AS owner_id
+            FROM chat_members cm2
+            JOIN chats c ON c.id = cm2.chat_id
+            WHERE c.chat_type = 'GROUP'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM chat_members owner_check
+                  WHERE owner_check.chat_id = cm2.chat_id
+                    AND owner_check.member_role = 'OWNER'
+              )
+            GROUP BY cm2.chat_id
+        ) owners
+        WHERE cm.chat_id = owners.chat_id
+          AND cm.user_id = owners.owner_id;
+        """;
+
         try (Connection connection = getConnection();
              Statement statement = connection.createStatement()) {
 
@@ -71,6 +97,8 @@ public class DatabaseConnection {
             statement.execute(chatsSql);
             statement.execute(chatMembersSql);
             statement.execute(messagesSql);
+            statement.execute(addMemberRoleSql);
+            statement.execute(ensureGroupOwnerSql);
 
             System.out.println("Table users is ready");
             System.out.println("Table chats is ready");

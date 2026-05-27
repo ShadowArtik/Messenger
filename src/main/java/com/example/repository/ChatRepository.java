@@ -73,19 +73,31 @@ public class ChatRepository {
                            ELSE c.chat_name
                        END AS chat_name,
                        c.chat_type,
-                       companion.id AS companion_user_id,
+                       CASE
+                           WHEN c.chat_type = 'PRIVATE'
+                           THEN companion.id
+                           ELSE NULL
+                       END AS companion_user_id,
                        cm.custom_chat_name IS NOT NULL AS has_custom_name,
-                       last_msg.last_message_text,
+                       CASE
+                           WHEN last_msg.last_message_text LIKE '[SYSTEM] %'
+                           THEN SUBSTRING(last_msg.last_message_text FROM 10)
+                           ELSE last_msg.last_message_text
+                       END AS last_message_text,
                        TO_CHAR(last_msg.created_at, 'HH24:MI') AS last_message_time
                 FROM chats c
                 JOIN chat_members cm ON c.id = cm.chat_id
 
-                LEFT JOIN chat_members companion_member
-                       ON companion_member.chat_id = c.id
+                LEFT JOIN LATERAL (
+                    SELECT u.id,
+                           u.display_name
+                    FROM chat_members companion_member
+                    JOIN users u ON u.id = companion_member.user_id
+                    WHERE companion_member.chat_id = c.id
                       AND companion_member.user_id <> cm.user_id
-
-                LEFT JOIN users companion
-                       ON companion.id = companion_member.user_id
+                      AND c.chat_type = 'PRIVATE'
+                    LIMIT 1
+                ) companion ON true
 
                 LEFT JOIN LATERAL (
                     SELECT m.text AS last_message_text,
@@ -139,6 +151,28 @@ public class ChatRepository {
             statement.setString(1, newName);
             statement.setInt(2, chatId);
             statement.setInt(3, userId);
+
+            statement.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void renameGroupChat(int chatId, String newName) {
+        String sql = """
+            UPDATE chats
+            SET chat_name = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND chat_type = 'GROUP'
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, newName);
+            statement.setInt(2, chatId);
 
             statement.executeUpdate();
 
@@ -210,8 +244,8 @@ public class ChatRepository {
 
     public void leaveGroup(int chatId, int userId) {
         String sql = """
-                DELETE FROM chat_members
-                WHERE chat_id = ?
+            DELETE FROM chat_members
+            WHERE chat_id = ?
                   AND user_id = ?
                 """;
 
@@ -226,6 +260,10 @@ public class ChatRepository {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public void removeMemberFromGroup(int chatId, int userId) {
+        leaveGroup(chatId, userId);
     }
 
     public boolean isBotChat(int chatId) {
@@ -324,8 +362,8 @@ public class ChatRepository {
             """;
 
         String insertMemberSql = """
-            INSERT INTO chat_members (chat_id, user_id)
-            VALUES (?, ?)
+            INSERT INTO chat_members (chat_id, user_id, member_role)
+            VALUES (?, ?, ?)
             ON CONFLICT (chat_id, user_id) DO NOTHING
             """;
 
@@ -343,6 +381,7 @@ public class ChatRepository {
                     try (PreparedStatement memberStatement = connection.prepareStatement(insertMemberSql)) {
                         memberStatement.setInt(1, chatId);
                         memberStatement.setInt(2, creatorId);
+                        memberStatement.setString(3, "OWNER");
                         memberStatement.executeUpdate();
 
                         for (Integer memberId : memberIds) {
@@ -352,6 +391,7 @@ public class ChatRepository {
 
                             memberStatement.setInt(1, chatId);
                             memberStatement.setInt(2, memberId);
+                            memberStatement.setString(3, "MEMBER");
                             memberStatement.executeUpdate();
                         }
                     }
@@ -415,11 +455,18 @@ public class ChatRepository {
         String sql = """
             SELECT u.id,
                    u.username,
-                   u.display_name
+                   u.display_name,
+                   cm.member_role
             FROM users u
             JOIN chat_members cm ON u.id = cm.user_id
             WHERE cm.chat_id = ?
-            ORDER BY u.display_name
+            ORDER BY
+                CASE cm.member_role
+                    WHEN 'OWNER' THEN 1
+                    WHEN 'ADMIN' THEN 2
+                    ELSE 3
+                END,
+                u.display_name
             """;
 
         try (Connection connection = DatabaseConnection.getConnection();
@@ -433,7 +480,8 @@ public class ChatRepository {
                 members.add(new User(
                         resultSet.getInt("id"),
                         resultSet.getString("username"),
-                        resultSet.getString("display_name")
+                        resultSet.getString("display_name"),
+                        resultSet.getString("member_role")
                 ));
             }
 
@@ -446,8 +494,8 @@ public class ChatRepository {
 
     public void addMemberToChat(int chatId, int userId) {
         String sql = """
-            INSERT INTO chat_members (chat_id, user_id)
-            VALUES (?, ?)
+            INSERT INTO chat_members (chat_id, user_id, member_role)
+            VALUES (?, ?, 'MEMBER')
             ON CONFLICT (chat_id, user_id) DO NOTHING
             """;
 
@@ -462,6 +510,113 @@ public class ChatRepository {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public String getMemberRole(int chatId, int userId) {
+        String sql = """
+            SELECT member_role
+            FROM chat_members
+            WHERE chat_id = ?
+              AND user_id = ?
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, chatId);
+            statement.setInt(2, userId);
+
+            ResultSet resultSet = statement.executeQuery();
+
+            if (resultSet.next()) {
+                return resultSet.getString("member_role");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public boolean updateMemberRole(int chatId, int userId, String role) {
+        String sql = """
+            UPDATE chat_members
+            SET member_role = ?
+            WHERE chat_id = ?
+              AND user_id = ?
+              AND member_role <> 'OWNER'
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, role);
+            statement.setInt(2, chatId);
+            statement.setInt(3, userId);
+
+            return statement.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    public boolean transferOwnership(int chatId, int currentOwnerId, int newOwnerId) {
+        String demoteCurrentOwnerSql = """
+            UPDATE chat_members
+            SET member_role = 'ADMIN'
+            WHERE chat_id = ?
+              AND user_id = ?
+              AND member_role = 'OWNER'
+            """;
+
+        String promoteNewOwnerSql = """
+            UPDATE chat_members
+            SET member_role = 'OWNER'
+            WHERE chat_id = ?
+              AND user_id = ?
+              AND member_role <> 'OWNER'
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement demoteStatement = connection.prepareStatement(demoteCurrentOwnerSql);
+                 PreparedStatement promoteStatement = connection.prepareStatement(promoteNewOwnerSql)) {
+
+                demoteStatement.setInt(1, chatId);
+                demoteStatement.setInt(2, currentOwnerId);
+
+                int demotedRows = demoteStatement.executeUpdate();
+
+                promoteStatement.setInt(1, chatId);
+                promoteStatement.setInt(2, newOwnerId);
+
+                int promotedRows = promoteStatement.executeUpdate();
+
+                if (demotedRows == 0 || promotedRows == 0) {
+                    connection.rollback();
+                    return false;
+                }
+
+                connection.commit();
+                return true;
+
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
     public void updateChatActivity(int chatId) {

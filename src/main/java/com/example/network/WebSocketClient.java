@@ -4,6 +4,7 @@ import com.example.network.dto.ConnectMessage;
 import com.example.network.dto.GroupCreatedMessage;
 import com.example.network.dto.GroupMembersUpdatedMessage;
 import com.example.network.dto.GroupMessage;
+import com.example.network.dto.GroupRenamedMessage;
 import com.example.network.dto.PrivateMessage;
 import com.example.network.dto.ProfileUpdatedMessage;
 import com.example.network.dto.TypingMessage;
@@ -155,12 +156,39 @@ public class WebSocketClient {
     public void sendGroupMembersUpdatedMessage(
             int senderId,
             int chatId,
-            List<Integer> memberIds
+            List<Integer> memberIds,
+            String systemMessageText
     ) {
         GroupMembersUpdatedMessage groupMembersUpdatedMessage =
-                new GroupMembersUpdatedMessage(senderId, chatId, memberIds);
+                new GroupMembersUpdatedMessage(
+                        senderId,
+                        chatId,
+                        memberIds,
+                        systemMessageText
+                );
 
         sendMessage(gson.toJson(groupMembersUpdatedMessage));
+    }
+
+    public void sendGroupRenamedMessage(
+            int senderId,
+            int chatId,
+            String oldName,
+            String newName,
+            List<Integer> memberIds,
+            String systemMessageText
+    ) {
+        GroupRenamedMessage groupRenamedMessage =
+                new GroupRenamedMessage(
+                        senderId,
+                        chatId,
+                        oldName,
+                        newName,
+                        memberIds,
+                        systemMessageText
+                );
+
+        sendMessage(gson.toJson(groupRenamedMessage));
     }
 
     public void sendMessage(String text) {

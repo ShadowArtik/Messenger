@@ -22,7 +22,7 @@ public class MessageRepository {
 
             statement.setInt(1, chatId);
             statement.setInt(2, senderId);
-            statement.setString(3, message.getText());
+            statement.setString(3, message.getStorageText());
 
             statement.executeUpdate();
 

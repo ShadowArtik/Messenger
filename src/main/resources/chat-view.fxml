@@ -108,19 +108,29 @@
 
                     <StackPane fx:id="chatAvatar"/>
 
-                    <HBox alignment="CENTER_LEFT"
-                          spacing="8"
+                    <VBox alignment="CENTER_LEFT"
+                          spacing="1"
                           HBox.hgrow="ALWAYS">
 
-                        <Label fx:id="chatTitleLabel"
-                               text="Bot"
-                               styleClass="chat-title"/>
+                        <HBox alignment="CENTER_LEFT"
+                              spacing="8">
 
-                        <Label fx:id="typingLabel"
+                            <Label fx:id="chatTitleLabel"
+                                   text="Bot"
+                                   styleClass="chat-title"/>
+
+                            <Label fx:id="typingLabel"
+                                   text=""
+                                   visible="false"
+                                   styleClass="typing-label"/>
+                        </HBox>
+
+                        <Label fx:id="chatSubtitleLabel"
                                text=""
                                visible="false"
-                               styleClass="typing-label"/>
-                    </HBox>
+                               managed="false"
+                               styleClass="chat-subtitle"/>
+                    </VBox>
 
                     <Button fx:id="menuButton"
                             text="⋮"
@@ -301,8 +311,8 @@
 
                 <VBox alignment="CENTER_LEFT"
                       spacing="16"
-                      prefWidth="380"
-                      maxWidth="380"
+                      prefWidth="460"
+                      maxWidth="460"
                       styleClass="modal-window"
                       onMouseClicked="#onModalWindowClick">
 
@@ -316,7 +326,7 @@
                            styleClass="modal-small-label"/>
 
                     <ListView fx:id="groupInfoMembersListView"
-                              prefHeight="150"
+                              prefHeight="180"
                               styleClass="members-list-view"/>
 
                     <HBox alignment="CENTER_RIGHT"
