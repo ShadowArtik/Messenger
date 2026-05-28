@@ -9,8 +9,10 @@ import com.example.service.UserService;
 import com.example.service.result.CreateChatResponse;
 import com.example.service.result.CreateGroupResponse;
 import com.example.network.WebSocketClient;
-import com.example.network.dto.IncomingMessage;
-import com.google.gson.Gson;
+import com.example.network.XmlProtocol;
+import com.example.network.IncomingMessage;
+import com.example.view.cell.MessengerCells;
+import com.example.view.overlay.MessengerOverlays;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -25,7 +27,6 @@ import javafx.geometry.Side;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -138,7 +139,6 @@ public class MessengerController {
     private final Set<Integer> typingChatIds = new HashSet<>();
     private final Set<Integer> selectedGroupMemberIds = new HashSet<>();
     private final Map<Integer, PauseTransition> chatTypingHideDelays = new HashMap<>();
-    private final Gson gson = new Gson();
 
     @FXML
     public void initialize() {
@@ -686,24 +686,12 @@ public class MessengerController {
 
         hideAllOverlays();
 
-        profileUsernameLabel.setText(
-                "@" + Session.getCurrentUser().getUsername()
+        MessengerOverlays.showProfile(
+                profileOverlay,
+                profileUsernameLabel,
+                profileDisplayNameField,
+                Session.getCurrentUser()
         );
-
-        profileDisplayNameField.setText(
-                Session.getCurrentUser().getDisplayName()
-        );
-
-        profileOverlay.setVisible(true);
-        profileOverlay.setManaged(true);
-        profileOverlay.toFront();
-
-        Platform.runLater(() -> {
-            profileDisplayNameField.requestFocus();
-            profileDisplayNameField.positionCaret(
-                    profileDisplayNameField.getText().length()
-            );
-        });
     }
 
     @FXML
@@ -795,9 +783,7 @@ public class MessengerController {
             return;
         }
 
-        clearChatOverlay.setVisible(true);
-        clearChatOverlay.setManaged(true);
-        clearChatOverlay.toFront();
+        MessengerOverlays.show(clearChatOverlay);
     }
 
     @FXML
@@ -841,18 +827,12 @@ public class MessengerController {
             return;
         }
 
-        renameChatNameField.setText(selectedChat.getName());
-
-        renameChatErrorLabel.setText("");
-        renameChatErrorLabel.setVisible(false);
-        renameChatErrorLabel.setManaged(false);
-
-        renameChatOverlay.setVisible(true);
-        renameChatOverlay.setManaged(true);
-        renameChatOverlay.toFront();
-
-        renameChatNameField.requestFocus();
-        renameChatNameField.selectAll();
+        MessengerOverlays.showRenameChat(
+                renameChatOverlay,
+                renameChatNameField,
+                renameChatErrorLabel,
+                selectedChat.getName()
+        );
     }
 
     @FXML
@@ -860,10 +840,7 @@ public class MessengerController {
         hideAllOverlays();
 
         renameChatNameField.clear();
-
-        renameChatErrorLabel.setText("");
-        renameChatErrorLabel.setVisible(false);
-        renameChatErrorLabel.setManaged(false);
+        MessengerOverlays.clearError(renameChatErrorLabel);
     }
 
     @FXML
@@ -960,9 +937,7 @@ public class MessengerController {
     }
 
     private void showRenameChatError(String message) {
-        renameChatErrorLabel.setText(message);
-        renameChatErrorLabel.setVisible(true);
-        renameChatErrorLabel.setManaged(true);
+        MessengerOverlays.showError(renameChatErrorLabel, message);
     }
 
     @FXML
@@ -972,9 +947,7 @@ public class MessengerController {
             return;
         }
 
-        deleteChatOverlay.setVisible(true);
-        deleteChatOverlay.setManaged(true);
-        deleteChatOverlay.toFront();
+        MessengerOverlays.show(deleteChatOverlay);
     }
 
     @FXML
@@ -999,40 +972,31 @@ public class MessengerController {
 
     @FXML
     private void onCreateChatClick() {
-
-        createChatUsernameField.clear();
-
-        createChatErrorLabel.setText("");
-        createChatErrorLabel.setVisible(false);
-        createChatErrorLabel.setManaged(false);
-
-        createChatOverlay.setVisible(true);
-        createChatOverlay.setManaged(true);
-        createChatOverlay.toFront();
-
-        createChatUsernameField.requestFocus();
+        MessengerOverlays.showCreateChat(
+                createChatOverlay,
+                createChatUsernameField,
+                createChatErrorLabel
+        );
     }
 
     private void showCreateGroupChatOverlay() {
-        groupNameField.clear();
-        selectedGroupMemberIds.clear();
-        groupMembersListView.setItems(getAvailableGroupMembers());
-
-        createGroupOverlay.setVisible(true);
-        createGroupOverlay.setManaged(true);
-        createGroupOverlay.toFront();
-
-        groupNameField.requestFocus();
+        MessengerOverlays.showCreateGroup(
+                createGroupOverlay,
+                groupNameField,
+                selectedGroupMemberIds,
+                groupMembersListView,
+                getAvailableGroupMembers()
+        );
     }
 
     @FXML
     private void onCancelCreateGroupClick() {
-        groupNameField.clear();
-        selectedGroupMemberIds.clear();
-        groupMembersListView.getItems().clear();
-
-        createGroupOverlay.setVisible(false);
-        createGroupOverlay.setManaged(false);
+        MessengerOverlays.hideCreateGroup(
+                createGroupOverlay,
+                groupNameField,
+                selectedGroupMemberIds,
+                groupMembersListView
+        );
     }
 
     @FXML
@@ -1068,12 +1032,12 @@ public class MessengerController {
                         response.getMemberIds()
                 );
 
-                groupNameField.clear();
-                selectedGroupMemberIds.clear();
-                groupMembersListView.getItems().clear();
-
-                createGroupOverlay.setVisible(false);
-                createGroupOverlay.setManaged(false);
+                MessengerOverlays.hideCreateGroup(
+                        createGroupOverlay,
+                        groupNameField,
+                        selectedGroupMemberIds,
+                        groupMembersListView
+                );
             }
             case EMPTY_GROUP_NAME -> showMessage(
                     "Invalid group name",
@@ -1108,37 +1072,9 @@ public class MessengerController {
     }
 
     private void setupGroupMembersList() {
-        groupMembersListView.setCellFactory(listView -> new ListCell<>() {
-
-            @Override
-            protected void updateItem(Chat chat, boolean empty) {
-                super.updateItem(chat, empty);
-
-                if (empty || chat == null) {
-                    setText(null);
-                    setGraphic(null);
-                    return;
-                }
-
-                CheckBox checkBox = new CheckBox(chat.getName());
-                checkBox.setSelected(
-                        selectedGroupMemberIds.contains(chat.getCompanionUserId())
-                );
-
-                checkBox.selectedProperty().addListener((observable, oldValue, selected) -> {
-                    if (selected) {
-                        selectedGroupMemberIds.add(chat.getCompanionUserId());
-                    } else {
-                        selectedGroupMemberIds.remove(chat.getCompanionUserId());
-                    }
-                });
-
-                checkBox.getStyleClass().add("group-member-checkbox");
-
-                setText(null);
-                setGraphic(checkBox);
-            }
-        });
+        groupMembersListView.setCellFactory(listView ->
+                MessengerCells.groupMemberSelectionCell(selectedGroupMemberIds)
+        );
     }
 
     private void setupAddMembersList() {
@@ -1146,135 +1082,24 @@ public class MessengerController {
                 SelectionMode.MULTIPLE
         );
 
-        addMembersListView.setCellFactory(listView -> new ListCell<>() {
-
-            @Override
-            protected void updateItem(User user, boolean empty) {
-                super.updateItem(user, empty);
-
-                if (empty || user == null) {
-                    setText(null);
-                    setGraphic(null);
-                    return;
-                }
-
-                HBox root = new HBox(10);
-                root.setAlignment(Pos.CENTER_LEFT);
-
-                StackPane avatar = createSmallMemberAvatar(user);
-
-                VBox textBox = new VBox(2);
-
-                Label displayNameLabel = new Label(user.getDisplayName());
-                displayNameLabel.getStyleClass().add("group-member-name");
-
-                Label usernameLabel = new Label("@" + user.getUsername());
-                usernameLabel.getStyleClass().add("group-member-username");
-
-                textBox.getChildren().addAll(displayNameLabel, usernameLabel);
-                root.getChildren().addAll(avatar, textBox);
-
-                setText(null);
-                setGraphic(root);
-            }
-        });
+        addMembersListView.setCellFactory(listView ->
+                MessengerCells.addMembersCell(this::createSmallMemberAvatar)
+        );
     }
 
     private void setupGroupInfoMembersList() {
-        groupInfoMembersListView.setCellFactory(listView -> new ListCell<>() {
-
-            @Override
-            protected void updateItem(User user, boolean empty) {
-                super.updateItem(user, empty);
-
-                if (empty || user == null) {
-                    setText(null);
-                    setGraphic(null);
-                    return;
-                }
-
-                setText(null);
-                setGraphic(createMemberRow(user));
-            }
-        });
-    }
-
-    private HBox createMemberRow(User user) {
-        HBox root = new HBox(10);
-        root.setAlignment(Pos.CENTER_LEFT);
-        root.setMaxWidth(Double.MAX_VALUE);
-
-        StackPane avatar = createSmallMemberAvatar(user);
-
-        VBox textBox = new VBox(2);
-        HBox.setHgrow(textBox, Priority.ALWAYS);
-
-        HBox nameRow = new HBox(6);
-        nameRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label nameLabel = new Label(user.getDisplayName());
-        nameLabel.getStyleClass().add("group-member-name");
-
-        nameRow.getChildren().add(nameLabel);
-
-        Label roleBadge = createRoleBadge(user.getMemberRole());
-
-        if (roleBadge != null) {
-            nameRow.getChildren().add(roleBadge);
-        }
-
-        Label usernameLabel = new Label("@" + user.getUsername());
-        usernameLabel.getStyleClass().add("group-member-username");
-
-        textBox.getChildren().addAll(nameRow, usernameLabel);
-        root.getChildren().addAll(avatar, textBox);
-
-        HBox actionsBox = new HBox(6);
-        actionsBox.setAlignment(Pos.CENTER_RIGHT);
-
-        if (canShowRoleAction(user)) {
-            Button roleButton = new Button(getRoleActionText(user));
-            roleButton.getStyleClass().add("member-role-button");
-            roleButton.setOnAction(event -> onToggleMemberRoleClick(user));
-            actionsBox.getChildren().add(roleButton);
-        }
-
-        if (model.canTransferOwnership(selectedChat, user)) {
-            Button ownerButton = new Button("Make owner");
-            ownerButton.getStyleClass().add("member-role-button");
-            ownerButton.setOnAction(event -> onTransferOwnerClick(user));
-            actionsBox.getChildren().add(ownerButton);
-        }
-
-        if (model.canKickGroupMember(selectedChat, user)) {
-            Button kickButton = new Button("Kick");
-            kickButton.getStyleClass().add("member-kick-button");
-            kickButton.setOnAction(event -> onKickGroupMemberClick(user));
-            actionsBox.getChildren().add(kickButton);
-        }
-
-        if (!actionsBox.getChildren().isEmpty()) {
-            root.getChildren().add(actionsBox);
-        }
-
-        return root;
-    }
-
-    private Label createRoleBadge(String role) {
-        if (role == null || "MEMBER".equalsIgnoreCase(role)) {
-            return null;
-        }
-
-        Label roleBadge = new Label(role.toUpperCase());
-        roleBadge.getStyleClass().add("group-member-role-badge");
-
-        if ("OWNER".equalsIgnoreCase(role)) {
-            roleBadge.getStyleClass().add("owner-role-badge");
-        } else if ("ADMIN".equalsIgnoreCase(role)) {
-            roleBadge.getStyleClass().add("admin-role-badge");
-        }
-
-        return roleBadge;
+        groupInfoMembersListView.setCellFactory(listView ->
+                MessengerCells.groupInfoMemberCell(
+                        this::createSmallMemberAvatar,
+                        this::canShowRoleAction,
+                        this::getRoleActionText,
+                        this::onToggleMemberRoleClick,
+                        user -> model.canTransferOwnership(selectedChat, user),
+                        this::onTransferOwnerClick,
+                        user -> model.canKickGroupMember(selectedChat, user),
+                        this::onKickGroupMemberClick
+                )
+        );
     }
 
     private boolean canShowRoleAction(User user) {
@@ -1422,10 +1247,7 @@ public class MessengerController {
         hideAllOverlays();
 
         createChatUsernameField.clear();
-
-        createChatErrorLabel.setText("");
-        createChatErrorLabel.setVisible(false);
-        createChatErrorLabel.setManaged(false);
+        MessengerOverlays.clearError(createChatErrorLabel);
     }
 
     @FXML
@@ -1441,14 +1263,10 @@ public class MessengerController {
 
         switch (response.getResult()) {
             case SUCCESS -> {
-                createChatOverlay.setVisible(false);
-                createChatOverlay.setManaged(false);
+                MessengerOverlays.hide(createChatOverlay);
 
                 createChatUsernameField.clear();
-
-                createChatErrorLabel.setText("");
-                createChatErrorLabel.setVisible(false);
-                createChatErrorLabel.setManaged(false);
+                MessengerOverlays.clearError(createChatErrorLabel);
 
                 selectedChat = response.getChat();
                 contactsListView.getSelectionModel().select(selectedChat);
@@ -1474,9 +1292,7 @@ public class MessengerController {
     }
 
     private void showCreateChatError(String message) {
-        createChatErrorLabel.setText(message);
-        createChatErrorLabel.setVisible(true);
-        createChatErrorLabel.setManaged(true);
+        MessengerOverlays.showError(createChatErrorLabel, message);
     }
 
     private void sendTypingStatus() {
@@ -1579,9 +1395,9 @@ public class MessengerController {
         scrollMessagesToBottom();
     }
 
-    private void handleIncomingWebSocketMessage(String json) {
+    private void handleIncomingWebSocketMessage(String xml) {
         try {
-            IncomingMessage incoming = gson.fromJson(json, IncomingMessage.class);
+            IncomingMessage incoming = XmlProtocol.parse(xml);
 
             if (incoming == null) {
                 return;
@@ -1593,47 +1409,17 @@ public class MessengerController {
             }
 
             if (incoming.isOnlineUsers()) {
-                model.setOnlineUsers(
-                        incoming.getUserIds(),
-                        Session.getCurrentUser().getId()
-                );
-
-                contactsListView.refresh();
-
-                if (selectedChat != null) {
-                    updateChatHeader(selectedChat);
-                }
-
+                handleOnlineUsersMessage(incoming);
                 return;
             }
 
             if (incoming.isUserOnline()) {
-                int userId = incoming.getUserId();
-
-                if (userId != Session.getCurrentUser().getId()) {
-                    model.setUserOnline(userId);
-                    contactsListView.refresh();
-
-                    if (selectedChat != null) {
-                        updateChatHeader(selectedChat);
-                    }
-                }
-
+                handleUserOnlineMessage(incoming);
                 return;
             }
 
             if (incoming.isUserOffline()) {
-                int userId = incoming.getUserId();
-
-                if (userId != Session.getCurrentUser().getId()) {
-                    model.setUserOffline(userId);
-                    contactsListView.refresh();
-
-                    if (selectedChat != null) {
-                        updateChatHeader(selectedChat);
-                    }
-                }
-
+                handleUserOfflineMessage(incoming);
                 return;
             }
 
@@ -1657,91 +1443,132 @@ public class MessengerController {
                 return;
             }
 
-            if (!incoming.isPrivateMessage() && !incoming.isGroupMessage()) {
-                return;
-            }
-
-            int chatId = incoming.getChatId();
-            int senderId = incoming.getSenderId();
-
-            if (senderId == Session.getCurrentUser().getId()) {
-                return;
-            }
-
-            hideChatListTyping(chatId);
-
-            if (selectedChat != null && selectedChat.getId() == chatId) {
-                hideTypingLabel();
-            }
-
-            int previouslySelectedChatId =
-                    selectedChat != null ? selectedChat.getId() : -1;
-
-            Chat incomingChat = model.findChatById(chatId);
-            boolean messageLoadedByReload = false;
-
-            if (incomingChat == null) {
-                model.reloadChats();
-                messageLoadedByReload = true;
-
-                incomingChat = model.findChatById(chatId);
-
-                if (incomingChat == null) {
-                    return;
-                }
-            }
-
-            Chat updatedIncomingChat = incomingChat;
-
-            if (!messageLoadedByReload) {
-                Message incomingMessage = new Message(
-                        incoming.getSenderId(),
-                        incoming.getSenderUsername(),
-                        incoming.getSenderDisplayName(),
-                        incoming.getText()
-                );
-
-                updatedIncomingChat =
-                        model.addIncomingMessage(incomingChat, incomingMessage);
-            }
-
-            if (updatedIncomingChat == null) {
-                return;
-            }
-
-            boolean messageForOpenedChat =
-                    previouslySelectedChatId == updatedIncomingChat.getId();
-
-            if (!messageForOpenedChat) {
-                updatedIncomingChat =
-                        model.increaseUnreadCount(updatedIncomingChat);
-            }
-
-            contactsListView.refresh();
-
-            if (messageForOpenedChat) {
-                selectedChat = updatedIncomingChat;
-                contactsListView.getSelectionModel().select(selectedChat);
-
-                messagesListView.setItems(
-                        model.getMessagesForChat(selectedChat)
-                );
-
-                scrollMessagesToBottom();
-
-                return;
-            }
-
-            Chat selectedAfterUpdate =
-                    model.findChatById(previouslySelectedChatId);
-
-            if (selectedAfterUpdate != null) {
-                selectedChat = selectedAfterUpdate;
-                contactsListView.getSelectionModel().select(selectedChat);
+            if (incoming.isPrivateMessage() || incoming.isGroupMessage()) {
+                handleChatMessage(incoming);
             }
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void handleOnlineUsersMessage(IncomingMessage incoming) {
+        model.setOnlineUsers(
+                incoming.getUserIds(),
+                Session.getCurrentUser().getId()
+        );
+
+        refreshOnlineState();
+    }
+
+    private void handleUserOnlineMessage(IncomingMessage incoming) {
+        int userId = incoming.getUserId();
+
+        if (userId == Session.getCurrentUser().getId()) {
+            return;
+        }
+
+        model.setUserOnline(userId);
+        refreshOnlineState();
+    }
+
+    private void handleUserOfflineMessage(IncomingMessage incoming) {
+        int userId = incoming.getUserId();
+
+        if (userId == Session.getCurrentUser().getId()) {
+            return;
+        }
+
+        model.setUserOffline(userId);
+        refreshOnlineState();
+    }
+
+    private void refreshOnlineState() {
+        contactsListView.refresh();
+
+        if (selectedChat != null) {
+            updateChatHeader(selectedChat);
+        }
+    }
+
+    private void handleChatMessage(IncomingMessage incoming) {
+        int chatId = incoming.getChatId();
+        int senderId = incoming.getSenderId();
+
+        if (senderId == Session.getCurrentUser().getId()) {
+            return;
+        }
+
+        hideChatListTyping(chatId);
+
+        if (selectedChat != null && selectedChat.getId() == chatId) {
+            hideTypingLabel();
+        }
+
+        int previouslySelectedChatId =
+                selectedChat != null ? selectedChat.getId() : -1;
+
+        Chat incomingChat = model.findChatById(chatId);
+        boolean messageLoadedByReload = false;
+
+        if (incomingChat == null) {
+            model.reloadChats();
+            messageLoadedByReload = true;
+
+            incomingChat = model.findChatById(chatId);
+
+            if (incomingChat == null) {
+                return;
+            }
+        }
+
+        Chat updatedIncomingChat = incomingChat;
+
+        if (!messageLoadedByReload) {
+            Message incomingMessage = new Message(
+                    incoming.getSenderId(),
+                    incoming.getSenderUsername(),
+                    incoming.getSenderDisplayName(),
+                    incoming.getText()
+            );
+
+            updatedIncomingChat =
+                    model.addIncomingMessage(incomingChat, incomingMessage);
+        }
+
+        if (updatedIncomingChat == null) {
+            return;
+        }
+
+        boolean messageForOpenedChat =
+                previouslySelectedChatId == updatedIncomingChat.getId();
+
+        if (!messageForOpenedChat) {
+            updatedIncomingChat =
+                    model.increaseUnreadCount(updatedIncomingChat);
+        }
+
+        contactsListView.refresh();
+
+        if (messageForOpenedChat) {
+            selectedChat = updatedIncomingChat;
+            contactsListView.getSelectionModel().select(selectedChat);
+
+            messagesListView.setItems(
+                    model.getMessagesForChat(selectedChat)
+            );
+
+            scrollMessagesToBottom();
+
+            return;
+        }
+
+        Chat selectedAfterUpdate =
+                model.findChatById(previouslySelectedChatId);
+
+        if (selectedAfterUpdate != null) {
+            selectedChat = selectedAfterUpdate;
+            contactsListView.getSelectionModel().select(selectedChat);
         }
     }
 
@@ -1944,7 +1771,14 @@ public class MessengerController {
             return;
         }
 
-        typingLabel.setText("is typing...");
+        if (model.isGroupChat(selectedChat)
+                && incoming.getSenderDisplayName() != null
+                && !incoming.getSenderDisplayName().isBlank()) {
+            typingLabel.setText(incoming.getSenderDisplayName() + " is typing...");
+        } else {
+            typingLabel.setText("typing...");
+        }
+
         typingLabel.setVisible(true);
         typingLabel.setManaged(true);
 
@@ -2073,9 +1907,7 @@ public class MessengerController {
 
         refreshGroupInfoMembers();
 
-        groupInfoOverlay.setVisible(true);
-        groupInfoOverlay.setManaged(true);
-        groupInfoOverlay.toFront();
+        MessengerOverlays.show(groupInfoOverlay);
     }
 
     private void refreshGroupInfoMembers() {
@@ -2091,7 +1923,7 @@ public class MessengerController {
 
     @FXML
     private void onCloseGroupInfoClick() {
-        hideOverlay(groupInfoOverlay);
+        MessengerOverlays.hide(groupInfoOverlay);
     }
 
     @FXML
@@ -2107,24 +1939,22 @@ public class MessengerController {
         addMembersListView.getItems().setAll(users);
         addMembersListView.getSelectionModel().clearSelection();
 
-        hideOverlay(groupInfoOverlay);
+        MessengerOverlays.hide(groupInfoOverlay);
 
-        addMembersOverlay.setVisible(true);
-        addMembersOverlay.setManaged(true);
-        addMembersOverlay.toFront();
+        MessengerOverlays.show(addMembersOverlay);
     }
 
     @FXML
     private void onCancelAddMembersClick() {
         addMembersListView.getItems().clear();
-        hideOverlay(addMembersOverlay);
+        MessengerOverlays.hide(addMembersOverlay);
     }
 
     @FXML
     private void onConfirmAddMembersClick() {
         if (selectedChat == null || !model.isGroupChat(selectedChat)) {
             addMembersListView.getItems().clear();
-            hideOverlay(addMembersOverlay);
+            MessengerOverlays.hide(addMembersOverlay);
             return;
         }
 
@@ -2177,7 +2007,7 @@ public class MessengerController {
         }
 
         addMembersListView.getItems().clear();
-        hideOverlay(addMembersOverlay);
+        MessengerOverlays.hide(addMembersOverlay);
         onGroupInfoClick();
     }
 
@@ -2202,25 +2032,23 @@ public class MessengerController {
             return;
         }
 
-        leaveGroupOverlay.setVisible(true);
-        leaveGroupOverlay.setManaged(true);
-        leaveGroupOverlay.toFront();
+        MessengerOverlays.show(leaveGroupOverlay);
     }
 
     @FXML
     private void onCancelLeaveGroupClick() {
-        hideOverlay(leaveGroupOverlay);
+        MessengerOverlays.hide(leaveGroupOverlay);
     }
 
     @FXML
     private void onConfirmLeaveGroupClick() {
         if (selectedChat == null) {
-            hideOverlay(leaveGroupOverlay);
+            MessengerOverlays.hide(leaveGroupOverlay);
             return;
         }
 
         if (!model.canCurrentOwnerLeaveGroup(selectedChat)) {
-            hideOverlay(leaveGroupOverlay);
+            MessengerOverlays.hide(leaveGroupOverlay);
             showMessage(
                     "Leave group",
                     "You are the owner of this group. Make another member the owner before leaving."
@@ -2245,7 +2073,7 @@ public class MessengerController {
         boolean success = model.leaveGroup(selectedChat);
 
         if (!success) {
-            hideOverlay(leaveGroupOverlay);
+            MessengerOverlays.hide(leaveGroupOverlay);
             showMessage("Error", "Cannot leave this group.");
             return;
         }
@@ -2265,18 +2093,14 @@ public class MessengerController {
         messagesListView.setItems(FXCollections.observableArrayList());
         showEmptyChatState();
 
-        hideOverlay(leaveGroupOverlay);
+        MessengerOverlays.hide(leaveGroupOverlay);
     }
 
     @FXML
     private void onLogoutClick() {
         hideChatMenu();
 
-        if (logoutOverlay != null) {
-            logoutOverlay.setVisible(true);
-            logoutOverlay.setManaged(true);
-            logoutOverlay.toFront();
-        }
+        MessengerOverlays.show(logoutOverlay);
     }
 
     @FXML
@@ -2339,23 +2163,18 @@ public class MessengerController {
     private void hideAllOverlays() {
         hideChatMenu();
 
-        hideOverlay(createChatOverlay);
-        hideOverlay(createGroupOverlay);
-        hideOverlay(groupInfoOverlay);
-        hideOverlay(addMembersOverlay);
-        hideOverlay(leaveGroupOverlay);
-        hideOverlay(renameChatOverlay);
-        hideOverlay(deleteChatOverlay);
-        hideOverlay(clearChatOverlay);
-        hideOverlay(logoutOverlay);
-        hideOverlay(profileOverlay);
-    }
-
-    private void hideOverlay(StackPane overlay) {
-        if (overlay != null) {
-            overlay.setVisible(false);
-            overlay.setManaged(false);
-        }
+        MessengerOverlays.hideAll(
+                createChatOverlay,
+                createGroupOverlay,
+                groupInfoOverlay,
+                addMembersOverlay,
+                leaveGroupOverlay,
+                renameChatOverlay,
+                deleteChatOverlay,
+                clearChatOverlay,
+                logoutOverlay,
+                profileOverlay
+        );
     }
 
     private StackPane createSmallMemberAvatar(User user) {

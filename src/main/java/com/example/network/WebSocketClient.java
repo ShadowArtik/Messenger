@@ -1,14 +1,5 @@
 package com.example.network;
 
-import com.example.network.dto.ConnectMessage;
-import com.example.network.dto.GroupCreatedMessage;
-import com.example.network.dto.GroupMembersUpdatedMessage;
-import com.example.network.dto.GroupMessage;
-import com.example.network.dto.GroupRenamedMessage;
-import com.example.network.dto.PrivateMessage;
-import com.example.network.dto.ProfileUpdatedMessage;
-import com.example.network.dto.TypingMessage;
-import com.google.gson.Gson;
 import javafx.application.Platform;
 
 import java.net.URI;
@@ -22,8 +13,6 @@ public class WebSocketClient {
 
     private WebSocket webSocket;
     private Consumer<String> messageHandler;
-
-    private final Gson gson = new Gson();
 
     public void setMessageHandler(Consumer<String> messageHandler) {
         this.messageHandler = messageHandler;
@@ -43,10 +32,7 @@ public class WebSocketClient {
 
                                 System.out.println("Connected to WebSocket server");
 
-                                ConnectMessage connectMessage =
-                                        new ConnectMessage(userId, username, displayName);
-
-                                sendMessage(gson.toJson(connectMessage));
+                                sendMessage(XmlProtocol.connect(userId, username, displayName));
 
                                 webSocket.request(1);
                             }
@@ -58,8 +44,6 @@ public class WebSocketClient {
                                     boolean last
                             ) {
                                 String message = data.toString();
-
-                                System.out.println("Message from server: " + message);
 
                                 if (messageHandler != null) {
                                     Platform.runLater(() -> messageHandler.accept(message));
@@ -86,7 +70,7 @@ public class WebSocketClient {
             String senderDisplayName,
             String text
     ) {
-        PrivateMessage privateMessage = new PrivateMessage(
+        String privateMessage = XmlProtocol.privateMessage(
                 chatId,
                 senderId,
                 receiverId,
@@ -95,7 +79,7 @@ public class WebSocketClient {
                 text
         );
 
-        sendMessage(gson.toJson(privateMessage));
+        sendMessage(privateMessage);
     }
 
     public void sendGroupMessage(
@@ -106,7 +90,7 @@ public class WebSocketClient {
             String senderDisplayName,
             String text
     ) {
-        GroupMessage groupMessage = new GroupMessage(
+        String groupMessage = XmlProtocol.groupMessage(
                 chatId,
                 senderId,
                 receiverIds,
@@ -115,7 +99,7 @@ public class WebSocketClient {
                 text
         );
 
-        sendMessage(gson.toJson(groupMessage));
+        sendMessage(groupMessage);
     }
 
     public void sendTypingMessage(
@@ -124,21 +108,18 @@ public class WebSocketClient {
             List<Integer> receiverIds,
             String senderDisplayName
     ) {
-        TypingMessage typingMessage = new TypingMessage(
+        String typingMessage = XmlProtocol.typing(
                 chatId,
                 senderId,
                 receiverIds,
                 senderDisplayName
         );
 
-        sendMessage(gson.toJson(typingMessage));
+        sendMessage(typingMessage);
     }
 
     public void sendProfileUpdatedMessage(int userId, String displayName) {
-        ProfileUpdatedMessage profileUpdatedMessage =
-                new ProfileUpdatedMessage(userId, displayName);
-
-        sendMessage(gson.toJson(profileUpdatedMessage));
+        sendMessage(XmlProtocol.profileUpdated(userId, displayName));
     }
 
     public void sendGroupCreatedMessage(
@@ -147,10 +128,7 @@ public class WebSocketClient {
             String chatName,
             List<Integer> memberIds
     ) {
-        GroupCreatedMessage groupCreatedMessage =
-                new GroupCreatedMessage(senderId, chatId, chatName, memberIds);
-
-        sendMessage(gson.toJson(groupCreatedMessage));
+        sendMessage(XmlProtocol.groupCreated(senderId, chatId, chatName, memberIds));
     }
 
     public void sendGroupMembersUpdatedMessage(
@@ -159,15 +137,12 @@ public class WebSocketClient {
             List<Integer> memberIds,
             String systemMessageText
     ) {
-        GroupMembersUpdatedMessage groupMembersUpdatedMessage =
-                new GroupMembersUpdatedMessage(
-                        senderId,
-                        chatId,
-                        memberIds,
-                        systemMessageText
-                );
-
-        sendMessage(gson.toJson(groupMembersUpdatedMessage));
+        sendMessage(XmlProtocol.groupMembersUpdated(
+                senderId,
+                chatId,
+                memberIds,
+                systemMessageText
+        ));
     }
 
     public void sendGroupRenamedMessage(
@@ -178,17 +153,14 @@ public class WebSocketClient {
             List<Integer> memberIds,
             String systemMessageText
     ) {
-        GroupRenamedMessage groupRenamedMessage =
-                new GroupRenamedMessage(
-                        senderId,
-                        chatId,
-                        oldName,
-                        newName,
-                        memberIds,
-                        systemMessageText
-                );
-
-        sendMessage(gson.toJson(groupRenamedMessage));
+        sendMessage(XmlProtocol.groupRenamed(
+                senderId,
+                chatId,
+                oldName,
+                newName,
+                memberIds,
+                systemMessageText
+        ));
     }
 
     public void sendMessage(String text) {
