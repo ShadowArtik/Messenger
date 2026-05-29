@@ -201,13 +201,18 @@ public class ChatRepository {
         }
     }
 
-    public void deleteChat(int chatId) {
-        String sql = "DELETE FROM chats WHERE id = ?";
+    public void deleteChatForUser(int chatId, int userId) {
+        String sql = """
+            DELETE FROM chat_members
+            WHERE chat_id = ?
+              AND user_id = ?
+            """;
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setInt(1, chatId);
+            statement.setInt(2, userId);
             statement.executeUpdate();
 
         } catch (SQLException e) {
@@ -264,6 +269,25 @@ public class ChatRepository {
 
     public void removeMemberFromGroup(int chatId, int userId) {
         leaveGroup(chatId, userId);
+    }
+
+    public void ensureChatMember(int chatId, int userId) {
+        String sql = """
+            INSERT INTO chat_members (chat_id, user_id)
+            VALUES (?, ?)
+            ON CONFLICT (chat_id, user_id) DO NOTHING
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, chatId);
+            statement.setInt(2, userId);
+            statement.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public boolean isBotChat(int chatId) {

@@ -231,6 +231,10 @@ public class MessengerModel {
         return chat != null && "GROUP".equalsIgnoreCase(chat.getType());
     }
 
+    public boolean isPrivateChat(Chat chat) {
+        return chat != null && "PRIVATE".equalsIgnoreCase(chat.getType());
+    }
+
     public boolean isChatOnline(Chat chat) {
         if (chat == null || isBotChat(chat)) {
             return false;
@@ -486,7 +490,10 @@ public class MessengerModel {
         chats.remove(chat);
         chatMessages.remove(chat.getId());
 
-        chatService.deleteChat(chat.getId());
+        chatService.deleteChatForUser(
+                chat.getId(),
+                Session.getCurrentUser().getId()
+        );
     }
 
     public boolean leaveGroup(Chat chat) {
@@ -574,6 +581,13 @@ public class MessengerModel {
 
         if (messages == null) {
             return null;
+        }
+
+        if (isPrivateChat(chat) && chat.getCompanionUserId() != null) {
+            chatService.ensureChatMember(
+                    chat.getId(),
+                    chat.getCompanionUserId()
+            );
         }
 
         messages.add(message);

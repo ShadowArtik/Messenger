@@ -36,8 +36,12 @@ public class ChatService {
         chatRepository.resetChatName(chatId, userId);
     }
 
-    public void deleteChat(int chatId) {
-        chatRepository.deleteChat(chatId);
+    public void deleteChatForUser(int chatId, int userId) {
+        chatRepository.deleteChatForUser(chatId, userId);
+    }
+
+    public void ensureChatMember(int chatId, int userId) {
+        chatRepository.ensureChatMember(chatId, userId);
     }
 
     public boolean leaveGroup(int chatId, int userId) {
