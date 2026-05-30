@@ -161,7 +161,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -192,7 +192,7 @@
                           spacing="10">
 
                         <Button text="Cancel"
-                                onAction="#onCancelCreateChatClick"
+                                onAction="#onCloseOverlay"
                                 styleClass="secondary-button"/>
 
                         <Button text="Create"
@@ -208,7 +208,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -245,7 +245,7 @@
                         <Pane HBox.hgrow="ALWAYS"/>
 
                         <Button text="Cancel"
-                                onAction="#onCancelRenameChatClick"
+                                onAction="#onCloseOverlay"
                                 styleClass="secondary-button"/>
 
                         <Button text="Save"
@@ -261,7 +261,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox alignment="CENTER_LEFT"
                       spacing="14"
@@ -307,7 +307,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox alignment="CENTER_LEFT"
                       spacing="16"
@@ -338,7 +338,7 @@
                                 styleClass="primary-button"/>
 
                         <Button text="Close"
-                                onAction="#onCloseGroupInfoClick"
+                                onAction="#onCloseOverlay"
                                 styleClass="secondary-button"/>
                     </HBox>
 
@@ -350,7 +350,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox alignment="CENTER_LEFT"
                       spacing="16"
@@ -389,7 +389,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -411,7 +411,7 @@
                           spacing="10">
 
                         <Button text="Cancel"
-                                onAction="#onCancelLeaveGroupClick"
+                                onAction="#onCloseOverlay"
                                 styleClass="secondary-button"/>
 
                         <Button text="Leave"
@@ -427,7 +427,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -451,7 +451,7 @@
                           spacing="10">
 
                         <Button text="Cancel"
-                                onAction="#onCancelDeleteChatClick"
+                                onAction="#onCloseOverlay"
                                 styleClass="secondary-button"/>
 
                         <Button text="Delete"
@@ -467,7 +467,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox spacing="14"
                       alignment="CENTER_LEFT"
@@ -491,7 +491,7 @@
                           spacing="10">
 
                         <Button text="Cancel"
-                                onAction="#onCancelClearChatClick"
+                                onAction="#onCloseOverlay"
                                 styleClass="secondary-button"/>
 
                         <Button text="Clear"
@@ -507,7 +507,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox alignment="CENTER_LEFT"
                       spacing="18"
@@ -529,7 +529,7 @@
                           spacing="10">
 
                         <Button text="Cancel"
-                                onAction="#onCancelLogoutClick"
+                                onAction="#onCloseOverlay"
                                 styleClass="secondary-button"/>
 
                         <Button text="Logout"
@@ -545,7 +545,7 @@
                        visible="false"
                        managed="false"
                        styleClass="modal-overlay"
-                       onMouseClicked="#onOverlayBackgroundClick">
+                       onMouseClicked="#onCloseOverlay">
 
                 <VBox alignment="CENTER_LEFT"
                       spacing="12"
@@ -570,7 +570,7 @@
                           spacing="10">
 
                         <Button text="Cancel"
-                                onAction="#onCancelProfileClick"
+                                onAction="#onCloseOverlay"
                                 styleClass="secondary-button"/>
 
                         <Button text="Save"

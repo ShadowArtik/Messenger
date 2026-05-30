@@ -4,18 +4,23 @@ import com.example.model.Chat;
 
 public class CreateChatResponse {
 
-    private final CreateChatResult result;
+    public enum Result {
+        SUCCESS,
+        USER_NOT_FOUND,
+        SELF_CHAT,
+        CHAT_ALREADY_EXISTS,
+        DATABASE_ERROR
+    }
+
+    private final Result result;
     private final Chat chat;
 
-    public CreateChatResponse(
-            CreateChatResult result,
-            Chat chat
-    ) {
+    public CreateChatResponse(Result result, Chat chat) {
         this.result = result;
         this.chat = chat;
     }
 
-    public CreateChatResult getResult() {
+    public Result getResult() {
         return result;
     }
 

@@ -30,10 +30,6 @@ public class Message {
         );
     }
 
-    public Message(String senderUsername, String text, String time) {
-        this(null, senderUsername, senderUsername, text, time);
-    }
-
     public Message(
             Integer senderId,
             String senderUsername,
@@ -46,10 +42,6 @@ public class Message {
         this.senderDisplayName = senderDisplayName;
         this.text = text;
         this.time = time;
-    }
-
-    public String getSender() {
-        return senderUsername;
     }
 
     public Integer getSenderId() {
@@ -92,14 +84,6 @@ public class Message {
                 "System",
                 SYSTEM_PREFIX + text
         );
-    }
-
-    public static String cleanSystemText(String text) {
-        if (isStoredSystemText(text)) {
-            return text.substring(SYSTEM_PREFIX.length());
-        }
-
-        return text;
     }
 
     private static boolean isStoredSystemText(String text) {

@@ -13,6 +13,7 @@ public class WebSocketClient {
 
     private WebSocket webSocket;
     private Consumer<String> messageHandler;
+    private final StringBuilder messageBuffer = new StringBuilder();
 
     public void setMessageHandler(Consumer<String> messageHandler) {
         this.messageHandler = messageHandler;
@@ -43,10 +44,17 @@ public class WebSocketClient {
                                     CharSequence data,
                                     boolean last
                             ) {
-                                String message = data.toString();
+                                // The JDK WebSocket may split a single server message across
+                                // several onText calls; accumulate until 'last' before parsing.
+                                messageBuffer.append(data);
 
-                                if (messageHandler != null) {
-                                    Platform.runLater(() -> messageHandler.accept(message));
+                                if (last) {
+                                    String message = messageBuffer.toString();
+                                    messageBuffer.setLength(0);
+
+                                    if (messageHandler != null) {
+                                        Platform.runLater(() -> messageHandler.accept(message));
+                                    }
                                 }
 
                                 webSocket.request(1);
@@ -60,6 +68,18 @@ public class WebSocketClient {
                             }
                         }
                 );
+    }
+
+    public void sendLoadHistory(int chatId) {
+        sendMessage(XmlProtocol.loadHistory(chatId));
+    }
+
+    public void sendClearChat(int chatId, int senderId) {
+        sendMessage(XmlProtocol.clearChat(chatId, senderId));
+    }
+
+    public void sendSaveMessage(int chatId, int senderId, String text) {
+        sendMessage(XmlProtocol.saveMessage(chatId, senderId, text));
     }
 
     public void sendPrivateMessage(
@@ -85,21 +105,17 @@ public class WebSocketClient {
     public void sendGroupMessage(
             int chatId,
             int senderId,
-            List<Integer> receiverIds,
             String senderUsername,
             String senderDisplayName,
             String text
     ) {
-        String groupMessage = XmlProtocol.groupMessage(
+        sendMessage(XmlProtocol.groupMessage(
                 chatId,
                 senderId,
-                receiverIds,
                 senderUsername,
                 senderDisplayName,
                 text
-        );
-
-        sendMessage(groupMessage);
+        ));
     }
 
     public void sendTypingMessage(

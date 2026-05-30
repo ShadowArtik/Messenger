@@ -2,10 +2,16 @@ package com.example.service;
 
 import com.example.model.User;
 import com.example.repository.UserRepository;
-import com.example.util.PasswordHasher;
-import com.example.service.result.RegisterResult;
 
 public class UserService {
+
+    public enum RegisterResult {
+        SUCCESS,
+        INVALID_USERNAME,
+        INVALID_DISPLAY_NAME,
+        INVALID_PASSWORD,
+        USER_ALREADY_EXISTS
+    }
 
     private final UserRepository userRepository = new UserRepository();
     private User currentUser;
@@ -39,33 +45,25 @@ public class UserService {
             return RegisterResult.USER_ALREADY_EXISTS;
         }
 
-        String hashedPassword =
-                PasswordHasher.hashPassword(password);
+        User createdUser = userRepository.register(username, displayName, password);
 
-        userRepository.createUser(
-                username,
-                displayName,
-                hashedPassword
-        );
+        if (createdUser == null) {
+            return RegisterResult.USER_ALREADY_EXISTS;
+        }
 
-        currentUser =
-                userRepository.findByUsername(username);
+        currentUser = createdUser;
 
         return RegisterResult.SUCCESS;
     }
 
     public boolean login(String username, String password) {
-        String savedPassword = userRepository.getPasswordHash(username);
+        User user = userRepository.login(username, password);
 
-        if (savedPassword == null) {
+        if (user == null) {
             return false;
         }
 
-        if (!PasswordHasher.checkPassword(password, savedPassword)) {
-            return false;
-        }
-
-        currentUser = userRepository.findByUsername(username);
+        currentUser = user;
         return true;
     }
 

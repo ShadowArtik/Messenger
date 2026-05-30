@@ -1,12 +1,11 @@
 package com.example.model;
 
-import com.example.service.ChatService;
-import com.example.service.MessageService;
+import com.example.network.WebSocketClient;
+import com.example.repository.ChatRepository;
+import com.example.service.GroupService;
 import com.example.service.UserService;
 import com.example.service.result.CreateGroupResponse;
-import com.example.service.result.CreateGroupResult;
 import com.example.service.result.CreateChatResponse;
-import com.example.service.result.CreateChatResult;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -22,9 +21,10 @@ public class MessengerModel {
     private final ObservableList<Chat> chats;
     private final Map<Integer, ObservableList<Message>> chatMessages;
 
-    private final MessageService messageService;
-    private final ChatService chatService;
+    private WebSocketClient webSocketClient;
+    private final ChatRepository chatRepository;
     private final UserService userService;
+    private final GroupService groupService;
     private final Set<Integer> onlineUserIds;
 
     private User helperBotUser;
@@ -34,9 +34,9 @@ public class MessengerModel {
         chatMessages = new HashMap<>();
         onlineUserIds = new HashSet<>();
 
-        messageService = new MessageService();
-        chatService = new ChatService();
+        chatRepository = new ChatRepository();
         userService = new UserService();
+        groupService = new GroupService();
 
         helperBotUser = userService.createSystemUserIfNotExists(
                 "helper_bot",
@@ -46,17 +46,21 @@ public class MessengerModel {
         loadChats();
     }
 
+    public GroupService groupService() {
+        return groupService;
+    }
+
     private void loadChats() {
         int currentUserId = Session.getCurrentUser().getId();
 
-        List<Chat> savedChats = chatService.getChatsForUser(currentUserId);
+        List<Chat> savedChats = chatRepository.getChatsForUser(currentUserId);
 
         for (Chat chat : savedChats) {
             addChatToMemory(chat);
         }
 
         if (!userService.isHelperInitialized(currentUserId)) {
-            Chat helperChat = chatService.createBotChat("Helper", currentUserId);
+            Chat helperChat = chatRepository.createChat("Helper", "BOT", currentUserId);
 
             if (helperChat != null) {
                 addChatToMemory(helperChat);
@@ -72,13 +76,7 @@ public class MessengerModel {
         }
 
         chats.add(chat);
-
-        ObservableList<Message> messages =
-                FXCollections.observableArrayList(
-                        messageService.getMessages(chat.getId())
-                );
-
-        chatMessages.put(chat.getId(), messages);
+        chatMessages.put(chat.getId(), FXCollections.observableArrayList());
     }
 
     public CreateChatResponse addChat(String username) {
@@ -86,14 +84,14 @@ public class MessengerModel {
 
         if (targetUser == null) {
             return new CreateChatResponse(
-                    CreateChatResult.USER_NOT_FOUND,
+                    CreateChatResponse.Result.USER_NOT_FOUND,
                     null
             );
         }
 
         if (targetUser.getId() == Session.getCurrentUser().getId()) {
             return new CreateChatResponse(
-                    CreateChatResult.SELF_CHAT,
+                    CreateChatResponse.Result.SELF_CHAT,
                     null
             );
         }
@@ -103,13 +101,13 @@ public class MessengerModel {
                     && existingChat.getCompanionUserId().equals(targetUser.getId())) {
 
                 return new CreateChatResponse(
-                        CreateChatResult.CHAT_ALREADY_EXISTS,
+                        CreateChatResponse.Result.CHAT_ALREADY_EXISTS,
                         null
                 );
             }
         }
 
-        Chat chat = chatService.createPrivateChat(
+        Chat chat = chatRepository.createPrivateChat(
                 targetUser.getDisplayName(),
                 Session.getCurrentUser().getId(),
                 targetUser.getId()
@@ -117,7 +115,7 @@ public class MessengerModel {
 
         if (chat == null) {
             return new CreateChatResponse(
-                    CreateChatResult.DATABASE_ERROR,
+                    CreateChatResponse.Result.DATABASE_ERROR,
                     null
             );
         }
@@ -125,88 +123,30 @@ public class MessengerModel {
         addChatToMemory(chat);
 
         return new CreateChatResponse(
-                CreateChatResult.SUCCESS,
+                CreateChatResponse.Result.SUCCESS,
                 chat
         );
     }
 
-    public CreateGroupResponse addGroupChat(String groupName, List<String> usernames) {
-        if (groupName == null || groupName.isBlank()) {
-            return CreateGroupResponse.error(CreateGroupResult.EMPTY_GROUP_NAME);
-        }
-
-        if (usernames == null || usernames.isEmpty()) {
-            return CreateGroupResponse.error(CreateGroupResult.EMPTY_MEMBERS);
-        }
-
-        int currentUserId = Session.getCurrentUser().getId();
-
-        List<Integer> memberIds = new ArrayList<>();
-
-        for (String username : usernames) {
-            if (username == null || username.isBlank()) {
-                continue;
-            }
-
-            String cleanUsername = username.trim();
-
-            User user = userService.findByUsername(cleanUsername);
-
-            if (user == null) {
-                return CreateGroupResponse.userNotFound(cleanUsername);
-            }
-
-            if (user.getId() == currentUserId) {
-                continue;
-            }
-
-            if (!memberIds.contains(user.getId())) {
-                memberIds.add(user.getId());
-            }
-        }
-
-        if (memberIds.isEmpty()) {
-            return CreateGroupResponse.error(CreateGroupResult.ONLY_SELF_SELECTED);
-        }
-
-        Chat groupChat = chatService.createGroupChat(
-                groupName.trim(),
-                currentUserId,
-                memberIds
-        );
-
-        if (groupChat == null) {
-            return CreateGroupResponse.error(CreateGroupResult.DATABASE_ERROR);
-        }
-
-        addChatToMemory(groupChat);
-
-        List<Integer> notificationMemberIds = new ArrayList<>();
-        notificationMemberIds.add(currentUserId);
-        notificationMemberIds.addAll(memberIds);
-
-        return CreateGroupResponse.success(groupChat, notificationMemberIds);
-    }
-
     public CreateGroupResponse createGroupChat(String groupName, List<Integer> memberIds) {
         if (groupName == null || groupName.isBlank()) {
-            return CreateGroupResponse.error(CreateGroupResult.EMPTY_GROUP_NAME);
+            return CreateGroupResponse.error(CreateGroupResponse.Result.EMPTY_GROUP_NAME);
         }
 
         if (memberIds == null || memberIds.isEmpty()) {
-            return CreateGroupResponse.error(CreateGroupResult.EMPTY_MEMBERS);
+            return CreateGroupResponse.error(CreateGroupResponse.Result.EMPTY_MEMBERS);
         }
 
         int currentUserId = Session.getCurrentUser().getId();
 
-        Chat groupChat = chatService.createGroupChat(
+        Chat groupChat = chatRepository.createGroupChat(
                 groupName.trim(),
                 currentUserId,
                 memberIds
         );
 
         if (groupChat == null) {
-            return CreateGroupResponse.error(CreateGroupResult.DATABASE_ERROR);
+            return CreateGroupResponse.error(CreateGroupResponse.Result.DATABASE_ERROR);
         }
 
         addChatToMemory(groupChat);
@@ -223,28 +163,26 @@ public class MessengerModel {
         return CreateGroupResponse.success(groupChat, notificationMemberIds);
     }
 
+    // =================== Chat type / online ===================
+
     public boolean isBotChat(Chat chat) {
         return chat != null && chat.isBot();
     }
 
     public boolean isGroupChat(Chat chat) {
-        return chat != null && "GROUP".equalsIgnoreCase(chat.getType());
-    }
-
-    public boolean isPrivateChat(Chat chat) {
-        return chat != null && "PRIVATE".equalsIgnoreCase(chat.getType());
+        return chat != null && chat.isGroup();
     }
 
     public boolean isChatOnline(Chat chat) {
-        if (chat == null || isBotChat(chat)) {
+        if (chat == null || chat.isBot()) {
             return false;
         }
 
-        if ("PRIVATE".equalsIgnoreCase(chat.getType())) {
+        if (chat.isPrivate()) {
             return isUserOnline(chat.getCompanionUserId());
         }
 
-        if (isGroupChat(chat)) {
+        if (chat.isGroup()) {
             for (Integer userId : getGroupReceiverIds(chat)) {
                 if (isUserOnline(userId)) {
                     return true;
@@ -255,23 +193,12 @@ public class MessengerModel {
         return false;
     }
 
-    public List<Integer> getGroupReceiverIds(Chat chat) {
-        if (chat == null || !isGroupChat(chat)) {
-            return List.of();
-        }
-
-        return chatService.getChatMemberIdsExcept(
-                chat.getId(),
-                Session.getCurrentUser().getId()
-        );
-    }
-
     public List<Integer> getReceiverIdsForChat(Chat chat) {
         if (chat == null) {
             return List.of();
         }
 
-        if ("PRIVATE".equalsIgnoreCase(chat.getType())) {
+        if (chat.isPrivate()) {
             if (chat.getCompanionUserId() == null) {
                 return List.of();
             }
@@ -279,138 +206,28 @@ public class MessengerModel {
             return List.of(chat.getCompanionUserId());
         }
 
-        if (isGroupChat(chat)) {
+        if (chat.isGroup()) {
             return getGroupReceiverIds(chat);
         }
 
         return List.of();
     }
 
-    public List<User> getGroupMembers(Chat chat) {
-        if (chat == null || !isGroupChat(chat)) {
-            return List.of();
-        }
+    // =================== Group facade (logic lives in GroupService) ===================
 
-        return chatService.getGroupMembers(chat.getId());
+    public List<Integer> getGroupReceiverIds(Chat chat) {
+        return groupService.getGroupReceiverIds(chat);
     }
 
-    public String getCurrentUserGroupRole(Chat chat) {
-        if (chat == null || !isGroupChat(chat) || Session.getCurrentUser() == null) {
-            return null;
-        }
-
-        return chatService.getMemberRole(
-                chat.getId(),
-                Session.getCurrentUser().getId()
-        );
+    public List<User> getGroupMembers(Chat chat) {
+        return groupService.getGroupMembers(chat);
     }
 
     public boolean canManageGroup(Chat chat) {
-        String role = getCurrentUserGroupRole(chat);
-        return "OWNER".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role);
+        return groupService.canManageGroup(chat);
     }
 
-    public boolean canManageGroupRoles(Chat chat) {
-        return "OWNER".equalsIgnoreCase(getCurrentUserGroupRole(chat));
-    }
-
-    public boolean canCurrentOwnerLeaveGroup(Chat chat) {
-        if (!"OWNER".equalsIgnoreCase(getCurrentUserGroupRole(chat))) {
-            return true;
-        }
-
-        return getGroupMembers(chat).size() <= 1;
-    }
-
-    public boolean canTransferOwnership(Chat chat, User member) {
-        return chat != null
-                && member != null
-                && canManageGroupRoles(chat)
-                && Session.getCurrentUser() != null
-                && member.getId() != Session.getCurrentUser().getId()
-                && !"OWNER".equalsIgnoreCase(member.getMemberRole());
-    }
-
-    public boolean transferOwnership(Chat chat, User member) {
-        if (!canTransferOwnership(chat, member)) {
-            return false;
-        }
-
-        return chatService.transferOwnership(
-                chat.getId(),
-                Session.getCurrentUser().getId(),
-                member.getId()
-        );
-    }
-
-    public boolean updateGroupMemberRole(Chat chat, User member, String role) {
-        if (chat == null || member == null || Session.getCurrentUser() == null) {
-            return false;
-        }
-
-        return chatService.updateMemberRole(
-                chat.getId(),
-                Session.getCurrentUser().getId(),
-                member.getId(),
-                role
-        );
-    }
-
-    public boolean canKickGroupMember(Chat chat, User member) {
-        if (chat == null || member == null || Session.getCurrentUser() == null) {
-            return false;
-        }
-
-        if (member.getId() == Session.getCurrentUser().getId()) {
-            return false;
-        }
-
-        String currentUserRole = getCurrentUserGroupRole(chat);
-        String targetUserRole = member.getMemberRole();
-
-        if ("OWNER".equalsIgnoreCase(targetUserRole)) {
-            return false;
-        }
-
-        return "OWNER".equalsIgnoreCase(currentUserRole)
-                || ("ADMIN".equalsIgnoreCase(currentUserRole)
-                && "MEMBER".equalsIgnoreCase(targetUserRole));
-    }
-
-    public boolean kickGroupMember(Chat chat, User member) {
-        if (chat == null || member == null || Session.getCurrentUser() == null) {
-            return false;
-        }
-
-        return chatService.kickMemberFromGroup(
-                chat.getId(),
-                Session.getCurrentUser().getId(),
-                member.getId()
-        );
-    }
-
-    public List<User> getUsersNotInChat(Chat chat) {
-        if (chat == null || !isGroupChat(chat) || Session.getCurrentUser() == null) {
-            return List.of();
-        }
-
-        return chatService.getUsersNotInChat(
-                chat.getId(),
-                Session.getCurrentUser().getId()
-        );
-    }
-
-    public void addMembersToGroup(Chat chat, List<User> users) {
-        if (chat == null || users == null || users.isEmpty()) {
-            return;
-        }
-
-        List<Integer> userIds = users.stream()
-                .map(User::getId)
-                .toList();
-
-        chatService.addMembersToGroup(chat.getId(), userIds);
-    }
+    // =================== Chat mutations ===================
 
     public Chat renameChat(Chat chat, String newName) {
         if (chat == null) {
@@ -430,37 +247,24 @@ public class MessengerModel {
             return null;
         }
 
-        boolean groupChat = isGroupChat(chat);
+        boolean groupChat = chat.isGroup();
 
         if (groupChat && !canManageGroup(chat)) {
             return null;
         }
 
         if (groupChat) {
-            chatService.renameGroupChat(chat.getId(), newName);
+            chatRepository.renameGroupChat(chat.getId(), newName);
         } else {
-            chatService.renameChat(
+            chatRepository.renameChat(
                     chat.getId(),
                     Session.getCurrentUser().getId(),
                     newName
             );
         }
 
-        Chat renamedChat = new Chat(
-                chat.getId(),
-                newName,
-                chat.getType(),
-                chat.getLastMessageText(),
-                chat.getLastMessageTime(),
-                chat.getCompanionUserId(),
-                chat.getUnreadCount(),
-                !groupChat
-        );
-
+        Chat renamedChat = chat.withName(newName, !groupChat);
         chats.set(index, renamedChat);
-
-        ObservableList<Message> messages = chatMessages.remove(chat.getId());
-        chatMessages.put(renamedChat.getId(), messages);
 
         return renamedChat;
     }
@@ -472,7 +276,7 @@ public class MessengerModel {
 
         int chatId = chat.getId();
 
-        chatService.resetChatName(
+        chatRepository.resetChatName(
                 chatId,
                 Session.getCurrentUser().getId()
         );
@@ -490,29 +294,20 @@ public class MessengerModel {
         chats.remove(chat);
         chatMessages.remove(chat.getId());
 
-        chatService.deleteChatForUser(
+        chatRepository.deleteChatForUser(
                 chat.getId(),
                 Session.getCurrentUser().getId()
         );
     }
 
     public boolean leaveGroup(Chat chat) {
-        if (chat == null || !isGroupChat(chat)) {
+        if (chat == null || !chat.isGroup()) {
             return false;
         }
 
-        boolean success = chatService.leaveGroup(
-                chat.getId(),
-                Session.getCurrentUser().getId()
-        );
-
-        if (!success) {
-            return false;
-        }
-
+        chatRepository.leaveGroup(chat.getId(), Session.getCurrentUser().getId());
         chats.remove(chat);
         chatMessages.remove(chat.getId());
-
         return true;
     }
 
@@ -526,21 +321,14 @@ public class MessengerModel {
         if (messages != null) {
             messages.clear();
         } else {
-            messages = FXCollections.observableArrayList();
+            chatMessages.put(chat.getId(), FXCollections.observableArrayList());
         }
 
-        messageService.clearChat(chat.getId());
+        if (webSocketClient != null) {
+            webSocketClient.sendClearChat(chat.getId(), Session.getCurrentUser().getId());
+        }
 
-        Chat updatedChat = new Chat(
-                chat.getId(),
-                chat.getName(),
-                chat.getType(),
-                null,
-                null,
-                chat.getCompanionUserId(),
-                0,
-                chat.hasCustomName()
-        );
+        Chat updatedChat = chat.withLastMessage(null, null).withUnreadCount(0);
 
         int index = chats.indexOf(chat);
 
@@ -548,10 +336,42 @@ public class MessengerModel {
             chats.set(index, updatedChat);
         }
 
-        chatMessages.remove(chat.getId());
-        chatMessages.put(updatedChat.getId(), messages);
+        return updatedChat;
+    }
+
+    public Chat applyRemoteClear(int chatId) {
+        Chat chat = findChatById(chatId);
+
+        if (chat == null) {
+            return null;
+        }
+
+        ObservableList<Message> messages = chatMessages.get(chatId);
+        if (messages != null) {
+            messages.clear();
+        }
+
+        int index = chats.indexOf(chat);
+        Chat updatedChat = chat.withLastMessage(null, null).withUnreadCount(0);
+
+        if (index != -1) {
+            chats.set(index, updatedChat);
+        }
 
         return updatedChat;
+    }
+
+    public void setWebSocketClient(WebSocketClient webSocketClient) {
+        this.webSocketClient = webSocketClient;
+    }
+
+    public void setMessagesForChat(int chatId, List<Message> messages) {
+        ObservableList<Message> list = chatMessages.get(chatId);
+        if (list == null) {
+            list = FXCollections.observableArrayList();
+            chatMessages.put(chatId, list);
+        }
+        list.setAll(messages != null ? messages : List.of());
     }
 
     public ObservableList<Chat> getChats() {
@@ -572,6 +392,8 @@ public class MessengerModel {
         return messages;
     }
 
+    // =================== Messages ===================
+
     public Chat addMessage(Chat chat, Message message) {
         if (chat == null || message == null) {
             return null;
@@ -583,8 +405,8 @@ public class MessengerModel {
             return null;
         }
 
-        if (isPrivateChat(chat) && chat.getCompanionUserId() != null) {
-            chatService.ensureChatMember(
+        if (chat.isPrivate() && chat.getCompanionUserId() != null) {
+            chatRepository.ensureChatMember(
                     chat.getId(),
                     chat.getCompanionUserId()
             );
@@ -592,11 +414,13 @@ public class MessengerModel {
 
         messages.add(message);
 
-        messageService.saveMessage(
-                chat.getId(),
-                Session.getCurrentUser().getId(),
-                message
-        );
+        if (chat.isBot() && webSocketClient != null && message.getSenderId() != null) {
+            webSocketClient.sendSaveMessage(
+                    chat.getId(),
+                    message.getSenderId(),
+                    message.getStorageText()
+            );
+        }
 
         return updateChatAfterNewMessage(
                 chat,
@@ -618,11 +442,10 @@ public class MessengerModel {
 
         messages.add(message);
 
-        messageService.saveMessage(
-                chat.getId(),
-                helperBotUser.getId(),
-                message
-        );
+        if (webSocketClient != null) {
+            webSocketClient.sendSaveMessage(chat.getId(), helperBotUser.getId(), message.getStorageText());
+        }
+        chatRepository.updateChatActivity(chat.getId());
 
         return updateChatAfterNewMessage(
                 chat,
@@ -647,12 +470,6 @@ public class MessengerModel {
 
         messages.add(message);
 
-        messageService.saveMessage(
-                chat.getId(),
-                senderId,
-                message
-        );
-
         return updateChatAfterNewMessage(
                 chat,
                 message.getText(),
@@ -669,30 +486,16 @@ public class MessengerModel {
             return null;
         }
 
-        chatService.updateChatActivity(chat.getId());
-
         int index = chats.indexOf(chat);
 
         if (index == -1) {
             return null;
         }
 
-        Chat updatedChat = new Chat(
-                chat.getId(),
-                chat.getName(),
-                chat.getType(),
-                lastMessageText,
-                lastMessageTime,
-                chat.getCompanionUserId(),
-                chat.getUnreadCount(),
-                chat.hasCustomName()
-        );
+        Chat updatedChat = chat.withLastMessage(lastMessageText, lastMessageTime);
 
         chats.remove(index);
         chats.add(0, updatedChat);
-
-        ObservableList<Message> messages = chatMessages.remove(chat.getId());
-        chatMessages.put(updatedChat.getId(), messages);
 
         return updatedChat;
     }
@@ -748,6 +551,8 @@ public class MessengerModel {
         loadChats();
     }
 
+    // =================== Online presence ===================
+
     public void setUserOnline(int userId) {
         onlineUserIds.add(userId);
     }
@@ -774,6 +579,8 @@ public class MessengerModel {
         return userId != null && onlineUserIds.contains(userId);
     }
 
+    // =================== Chat list updates ===================
+
     public Chat updateCompanionDisplayName(int companionUserId, String displayName) {
         if (displayName == null || displayName.isBlank()) {
             return null;
@@ -788,21 +595,8 @@ public class MessengerModel {
                 continue;
             }
 
-            Chat updatedChat = new Chat(
-                    chat.getId(),
-                    displayName,
-                    chat.getType(),
-                    chat.getLastMessageText(),
-                    chat.getLastMessageTime(),
-                    chat.getCompanionUserId(),
-                    chat.getUnreadCount(),
-                    chat.hasCustomName()
-            );
-
+            Chat updatedChat = chat.withName(displayName, chat.hasCustomName());
             chats.set(i, updatedChat);
-
-            ObservableList<Message> messages = chatMessages.remove(chat.getId());
-            chatMessages.put(updatedChat.getId(), messages);
 
             return updatedChat;
         }
@@ -821,21 +615,8 @@ public class MessengerModel {
             return null;
         }
 
-        Chat updatedChat = new Chat(
-                chat.getId(),
-                chat.getName(),
-                chat.getType(),
-                chat.getLastMessageText(),
-                chat.getLastMessageTime(),
-                chat.getCompanionUserId(),
-                chat.getUnreadCount() + 1,
-                chat.hasCustomName()
-        );
-
+        Chat updatedChat = chat.withUnreadCount(chat.getUnreadCount() + 1);
         chats.set(index, updatedChat);
-
-        ObservableList<Message> messages = chatMessages.remove(chat.getId());
-        chatMessages.put(updatedChat.getId(), messages);
 
         return updatedChat;
     }
@@ -855,21 +636,8 @@ public class MessengerModel {
             return chat;
         }
 
-        Chat updatedChat = new Chat(
-                chat.getId(),
-                chat.getName(),
-                chat.getType(),
-                chat.getLastMessageText(),
-                chat.getLastMessageTime(),
-                chat.getCompanionUserId(),
-                0,
-                chat.hasCustomName()
-        );
-
+        Chat updatedChat = chat.withUnreadCount(0);
         chats.set(index, updatedChat);
-
-        ObservableList<Message> messages = chatMessages.remove(chat.getId());
-        chatMessages.put(updatedChat.getId(), messages);
 
         return updatedChat;
     }

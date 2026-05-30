@@ -11,37 +11,6 @@ public class Chat {
     private final int unreadCount;
     private final boolean customName;
 
-    public Chat(int id, String name, String type) {
-        this(id, name, type, null, null, null, 0, false);
-    }
-
-    public Chat(int id, String name, String type, String lastMessageText, String lastMessageTime) {
-        this(id, name, type, lastMessageText, lastMessageTime, null, 0, false);
-    }
-
-    public Chat(
-            int id,
-            String name,
-            String type,
-            String lastMessageText,
-            String lastMessageTime,
-            Integer companionUserId
-    ) {
-        this(id, name, type, lastMessageText, lastMessageTime, companionUserId, 0, false);
-    }
-
-    public Chat(
-            int id,
-            String name,
-            String type,
-            String lastMessageText,
-            String lastMessageTime,
-            Integer companionUserId,
-            int unreadCount
-    ) {
-        this(id, name, type, lastMessageText, lastMessageTime, companionUserId, unreadCount, false);
-    }
-
     public Chat(
             int id,
             String name,
@@ -96,6 +65,28 @@ public class Chat {
 
     public boolean isBot() {
         return "BOT".equalsIgnoreCase(type);
+    }
+
+    public boolean isGroup() {
+        return "GROUP".equalsIgnoreCase(type);
+    }
+
+    public boolean isPrivate() {
+        return "PRIVATE".equalsIgnoreCase(type);
+    }
+
+    // Withers: return a copy with one aspect changed (Chat is immutable).
+
+    public Chat withName(String name, boolean customName) {
+        return new Chat(id, name, type, lastMessageText, lastMessageTime, companionUserId, unreadCount, customName);
+    }
+
+    public Chat withLastMessage(String lastMessageText, String lastMessageTime) {
+        return new Chat(id, name, type, lastMessageText, lastMessageTime, companionUserId, unreadCount, customName);
+    }
+
+    public Chat withUnreadCount(int unreadCount) {
+        return new Chat(id, name, type, lastMessageText, lastMessageTime, companionUserId, unreadCount, customName);
     }
 
     @Override

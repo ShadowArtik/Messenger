@@ -2,7 +2,6 @@ package com.example.controller;
 
 import com.example.model.Session;
 import com.example.service.UserService;
-import com.example.service.result.RegisterResult;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -63,7 +62,7 @@ public class LoginController {
         String displayName = displayNameField.getText().trim();
         String password = registerPasswordField.getText().trim();
 
-        RegisterResult result = userService.register(
+        UserService.RegisterResult result = userService.register(
                 username,
                 displayName,
                 password

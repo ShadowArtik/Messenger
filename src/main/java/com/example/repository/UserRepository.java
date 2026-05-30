@@ -1,219 +1,125 @@
 package com.example.repository;
 
-import com.example.database.DatabaseConnection;
 import com.example.model.User;
-import com.example.util.PasswordHasher;
+import com.example.network.ServerApi;
+import com.fasterxml.jackson.databind.JsonNode;
 
-import java.sql.*;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * Client-side gateway for the user domain. All data access goes through the
+ * MessengerServer REST API; the client no longer talks to PostgreSQL directly.
+ */
 public class UserRepository {
 
-    public void createUser(String username, String displayName, String passwordHash) {
-        String sql = """
-                INSERT INTO users (username, display_name, password_hash)
-                VALUES (?, ?, ?)
-                """;
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-
-            statement.setString(1, username);
-            statement.setString(2, displayName);
-            statement.setString(3, passwordHash);
-
-            statement.executeUpdate();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+    private final ServerApi api = new ServerApi();
 
     public User findByUsername(String username) {
-        String sql = """
-                SELECT id, username, display_name
-                FROM users
-                WHERE username = ?
-                """;
+        HttpResponse<String> response = api.get("/api/users/by-username/" + ServerApi.encode(username));
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-
-            statement.setString(1, username);
-
-            ResultSet resultSet = statement.executeQuery();
-
-            if (resultSet.next()) {
-                return new User(
-                        resultSet.getInt("id"),
-                        resultSet.getString("username"),
-                        resultSet.getString("display_name")
-                );
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+        if (response.statusCode() != 200) {
+            return null;
         }
 
-        return null;
+        return toUser(api.readTree(response.body()));
     }
 
-    public String getPasswordHash(String username) {
-        String sql = """
-                SELECT password_hash
-                FROM users
-                WHERE username = ?
-                """;
+    public User login(String username, String password) {
+        HttpResponse<String> response = api.post(
+                "/api/users/login",
+                Map.of("username", username, "password", password)
+        );
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-
-            statement.setString(1, username);
-
-            ResultSet resultSet = statement.executeQuery();
-
-            if (resultSet.next()) {
-                return resultSet.getString("password_hash");
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+        if (response.statusCode() != 200) {
+            return null;
         }
 
-        return null;
+        return toUser(api.readTree(response.body()));
+    }
+
+    /**
+     * @return the created user, or {@code null} if the username is already taken.
+     */
+    public User register(String username, String displayName, String password) {
+        HttpResponse<String> response = api.post(
+                "/api/users/register",
+                Map.of("username", username, "displayName", displayName, "password", password)
+        );
+
+        if (response.statusCode() != 200) {
+            return null;
+        }
+
+        return toUser(api.readTree(response.body()));
     }
 
     public User createSystemUserIfNotExists(String username, String displayName) {
-        User existingUser = findByUsername(username);
-
-        if (existingUser != null) {
-            return existingUser;
-        }
-
-        createUser(
-                username,
-                displayName,
-                PasswordHasher.hashPassword("system")
+        HttpResponse<String> response = api.post(
+                "/api/users/system",
+                Map.of("username", username, "displayName", displayName)
         );
 
-        return findByUsername(username);
+        if (response.statusCode() != 200) {
+            return null;
+        }
+
+        return toUser(api.readTree(response.body()));
     }
 
     public boolean isHelperInitialized(int userId) {
-        String sql = """
-            SELECT helper_initialized
-            FROM users
-            WHERE id = ?
-            """;
+        HttpResponse<String> response = api.get("/api/users/" + userId + "/helper-initialized");
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-
-            statement.setInt(1, userId);
-
-            ResultSet resultSet = statement.executeQuery();
-
-            if (resultSet.next()) {
-                return resultSet.getBoolean("helper_initialized");
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return false;
+        return response.statusCode() == 200 && Boolean.parseBoolean(response.body().trim());
     }
 
     public void markHelperInitialized(int userId) {
-        String sql = """
-            UPDATE users
-            SET helper_initialized = TRUE
-            WHERE id = ?
-            """;
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-
-            statement.setInt(1, userId);
-            statement.executeUpdate();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        api.post("/api/users/" + userId + "/helper-initialized", null);
     }
 
     public boolean updateDisplayName(int userId, String newDisplayName) {
-        String sql = """
-                UPDATE users
-                SET display_name = ?
-                WHERE id = ?
-                """;
+        HttpResponse<String> response = api.put(
+                "/api/users/" + userId + "/display-name",
+                Map.of("displayName", newDisplayName)
+        );
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-
-            statement.setString(1, newDisplayName);
-            statement.setInt(2, userId);
-
-            int updatedRows = statement.executeUpdate();
-
-            return updatedRows > 0;
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return false;
+        return response.statusCode() == 200;
     }
 
     public List<User> getUsersNotInChat(int chatId, int currentUserId) {
+        HttpResponse<String> response = api.get(
+                "/api/users/non-members?chatId=" + chatId + "&currentUserId=" + currentUserId
+        );
+
         List<User> users = new ArrayList<>();
 
-        String sql = """
-            SELECT DISTINCT u.id,
-                            u.username,
-                            u.display_name
-            FROM users u
-            JOIN chat_members my_private_membership
-                 ON my_private_membership.user_id = ?
-            JOIN chats private_chat
-                 ON private_chat.id = my_private_membership.chat_id
-                AND private_chat.chat_type = 'PRIVATE'
-            JOIN chat_members companion_membership
-                 ON companion_membership.chat_id = private_chat.id
-                AND companion_membership.user_id = u.id
-                AND companion_membership.user_id <> ?
-            WHERE u.username <> 'helper_bot'
-              AND u.id NOT IN (
-                  SELECT user_id
-                  FROM chat_members
-                  WHERE chat_id = ?
-              )
-            ORDER BY u.display_name
-            """;
+        if (response.statusCode() != 200) {
+            return users;
+        }
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-
-            statement.setInt(1, currentUserId);
-            statement.setInt(2, currentUserId);
-            statement.setInt(3, chatId);
-
-            ResultSet resultSet = statement.executeQuery();
-
-            while (resultSet.next()) {
-                users.add(new User(
-                        resultSet.getInt("id"),
-                        resultSet.getString("username"),
-                        resultSet.getString("display_name")
-                ));
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+        for (JsonNode node : api.readTree(response.body())) {
+            users.add(toUser(node));
         }
 
         return users;
+    }
+
+    private User toUser(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+
+        String memberRole = node.hasNonNull("memberRole")
+                ? node.get("memberRole").asText()
+                : null;
+
+        return new User(
+                node.get("id").asInt(),
+                node.get("username").asText(),
+                node.get("displayName").asText(),
+                memberRole
+        );
     }
 }
