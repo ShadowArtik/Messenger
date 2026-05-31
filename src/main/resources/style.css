@@ -1,8 +1,17 @@
 .root {
     -fx-font-family: "Segoe UI";
-    -fx-background-color: #1E1F22;
     -fx-focus-color: transparent;
     -fx-faint-focus-color: transparent;
+
+    /* Colour palette — reused everywhere via these looked-up colours. */
+    -c-base: #1E1F22;       /* app background        */
+    -c-panel: #2B2D31;      /* sidebar / lists / modals */
+    -c-input: #383A40;      /* text inputs           */
+    -c-elevated: #343740;   /* member lists, pills   */
+    -c-accent: #5B9DFF;     /* primary blue          */
+    -c-indigo: #5865F2;     /* add-chat / badges     */
+
+    -fx-background-color: -c-base;
 }
 
 /* =========================
@@ -10,12 +19,12 @@
 ========================= */
 
 .sidebar {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
 }
 
 .chat-area {
     -fx-padding: 10;
-    -fx-background-color: #1E1F22;
+    -fx-background-color: -c-base;
 }
 
 .chat-header {
@@ -48,8 +57,6 @@
     -fx-border-color: transparent;
     -fx-border-width: 0;
     -fx-background-color: transparent;
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
 }
 
 .clear-search-label {
@@ -92,7 +99,7 @@
 }
 
 .empty-chat-box {
-    -fx-background-color: #1E1F22;
+    -fx-background-color: -c-base;
 }
 
 .empty-chat-title {
@@ -111,7 +118,7 @@
 ========================= */
 
 .list-view {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
     -fx-background-insets: 0;
     -fx-border-color: transparent;
     -fx-padding: 6;
@@ -143,12 +150,21 @@
     -fx-font-weight: bold;
 }
 
+/* Empty cells (the blank space below the last chat) must never highlight on
+   hover/selection. */
+.list-cell:empty,
+.list-cell:empty:hover,
+.list-cell:empty:selected,
+.list-cell:empty:filled {
+    -fx-background-color: transparent;
+}
+
 /* =========================
    MESSAGES LIST
 ========================= */
 
 .messages-list {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
     -fx-background-insets: 0;
     -fx-border-color: transparent;
     -fx-padding: 10 10 0 10;
@@ -161,7 +177,7 @@
 /* Remove the focus ring modena draws around the list when it gains focus
    (clicking anywhere in the chat, even empty space, otherwise flashes it). */
 .messages-list:focused {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
     -fx-background-insets: 0;
     -fx-border-color: transparent;
 }
@@ -200,7 +216,7 @@
 }
 
 .text-field {
-    -fx-background-color: #383A40;
+    -fx-background-color: -c-input;
     -fx-background-insets: 0;
     -fx-background-radius: 20;
     -fx-border-color: transparent;
@@ -218,7 +234,7 @@
 }
 
 .chat-search-box {
-    -fx-background-color: #383A40;
+    -fx-background-color: -c-input;
     -fx-background-radius: 18;
     -fx-border-color: transparent;
     -fx-border-radius: 18;
@@ -235,8 +251,6 @@
     -fx-border-color: transparent;
     -fx-border-width: 0;
     -fx-border-radius: 18;
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
     -fx-padding: 8 8 8 12;
 }
 
@@ -245,7 +259,7 @@
 ========================= */
 
 .button {
-    -fx-background-color: #5B9DFF;
+    -fx-background-color: -c-accent;
     -fx-background-insets: 0;
     -fx-background-radius: 20;
     -fx-border-color: transparent;
@@ -266,16 +280,14 @@
     -fx-background-color: #4C8EF0;
 }
 
+/* Inherits colour/hover from .button; only the shape differs. */
 .send-button {
-    -fx-background-color: #5B9DFF;
     -fx-background-radius: 22;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
     -fx-padding: 10 20;
 }
 
 .attach-button {
-    -fx-background-color: #383A40;
+    -fx-background-color: -c-input;
     -fx-background-radius: 999;
     -fx-text-fill: white;
     -fx-font-size: 15px;
@@ -291,16 +303,12 @@
     -fx-background-color: #45474E;
 }
 
-.send-button:hover {
-    -fx-background-color: #74AEFF;
-}
-
 /* =========================
    ADD CHAT BUTTON
 ========================= */
 
 .add-chat-button {
-    -fx-background-color: #5865F2;
+    -fx-background-color: -c-indigo;
     -fx-text-fill: white;
     -fx-font-size: 24px;
     -fx-font-weight: bold;
@@ -365,7 +373,7 @@
 }
 
 .message-bubble-outgoing {
-    -fx-background-color: #5B9DFF;
+    -fx-background-color: -c-accent;
 }
 
 .message-bubble-incoming {
@@ -419,7 +427,7 @@
 ========================= */
 
 .bot-badge {
-    -fx-background-color: #5865F2;
+    -fx-background-color: -c-indigo;
     -fx-text-fill: white;
     -fx-font-size: 10px;
     -fx-font-weight: bold;
@@ -454,7 +462,7 @@
 }
 
 .unread-badge {
-    -fx-background-color: #5B9DFF;
+    -fx-background-color: -c-accent;
     -fx-text-fill: white;
     -fx-font-size: 11px;
     -fx-font-weight: bold;
@@ -500,11 +508,11 @@
 ========================= */
 
 .dialog-pane {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
 }
 
 .dialog-pane .header-panel {
-    -fx-background-color: #1E1F22;
+    -fx-background-color: -c-base;
 }
 
 .dialog-pane .label {
@@ -512,7 +520,7 @@
 }
 
 .dialog-pane .button {
-    -fx-background-color: #5865F2;
+    -fx-background-color: -c-indigo;
     -fx-text-fill: white;
     -fx-background-radius: 8;
     -fx-padding: 8 16;
@@ -529,7 +537,7 @@
 }
 
 .create-chat-dialog {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
     -fx-background-radius: 18;
     -fx-border-color: #3A3D44;
     -fx-border-width: 1;
@@ -539,7 +547,7 @@
 }
 
 .modal-window {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
     -fx-background-radius: 16;
     -fx-border-color: #3A3D44;
     -fx-border-width: 1;
@@ -550,7 +558,7 @@
 }
 
 .profile-card {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
     -fx-background-radius: 18;
     -fx-border-color: #3A3D45;
     -fx-border-radius: 18;
@@ -581,7 +589,7 @@
 }
 
 .modal-text-field {
-    -fx-background-color: #1E1F22;
+    -fx-background-color: -c-base;
     -fx-text-fill: white;
     -fx-prompt-text-fill: #8F949E;
     -fx-background-radius: 10;
@@ -592,11 +600,9 @@
 }
 
 .modal-text-field:focused {
-    -fx-background-color: #1E1F22;
+    -fx-background-color: -c-base;
     -fx-border-color: #3A3D44;
     -fx-border-width: 1;
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
 }
 
 .dialog-title {
@@ -611,7 +617,7 @@
 }
 
 .dialog-input {
-    -fx-background-color: #383A40;
+    -fx-background-color: -c-input;
     -fx-background-radius: 14;
     -fx-border-color: transparent;
     -fx-border-radius: 14;
@@ -632,35 +638,21 @@
     -fx-font-weight: bold;
 }
 
-.group-members-list {
-    -fx-background-color: #343740;
-    -fx-background-radius: 14;
-    -fx-border-color: transparent;
-    -fx-padding: 6;
-}
-
-.group-members-list .list-cell {
-    -fx-background-color: transparent;
-    -fx-padding: 8 10;
-}
-
-.group-members-list .list-cell:hover {
-    -fx-background-color: #3E424D;
-    -fx-background-radius: 10;
-}
-
+.group-members-list,
 .members-list-view {
-    -fx-background-color: #343740;
+    -fx-background-color: -c-elevated;
     -fx-background-radius: 14;
     -fx-border-color: transparent;
     -fx-padding: 6;
 }
 
+.group-members-list .list-cell,
 .members-list-view .list-cell {
     -fx-background-color: transparent;
     -fx-padding: 8 10;
 }
 
+.group-members-list .list-cell:hover,
 .members-list-view .list-cell:hover {
     -fx-background-color: #3E424D;
     -fx-background-radius: 10;
@@ -713,54 +705,34 @@
 }
 
 .admin-role-badge {
-    -fx-background-color: #5B9DFF;
+    -fx-background-color: -c-accent;
 }
 
-.member-role-button {
-    -fx-background-color: #343740;
-    -fx-background-radius: 12;
-    -fx-text-fill: white;
-    -fx-font-size: 11px;
-    -fx-font-weight: bold;
-    -fx-padding: 6 9;
-    -fx-cursor: hand;
-}
-
-.member-role-button:hover {
-    -fx-background-color: #454852;
-}
-
+/* Shared shape for the small member-action buttons (colour set per variant). */
+.member-role-button,
 .member-kick-button {
-    -fx-background-color: #4A2D35;
     -fx-background-radius: 12;
-    -fx-text-fill: white;
     -fx-font-size: 11px;
-    -fx-font-weight: bold;
     -fx-padding: 6 9;
     -fx-cursor: hand;
 }
 
-.member-kick-button:hover {
-    -fx-background-color: #673743;
-}
+.member-role-button { -fx-background-color: -c-elevated; }
+.member-role-button:hover { -fx-background-color: #454852; }
 
+.member-kick-button { -fx-background-color: #4A2D35; }
+.member-kick-button:hover { -fx-background-color: #673743; }
+
+/* Inherits colour/hover from .button; only the shape differs. */
 .primary-button {
-    -fx-background-color: #5B9DFF;
     -fx-background-radius: 18;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
     -fx-padding: 9 18;
 }
 
-.primary-button:hover {
-    -fx-background-color: #74AEFF;
-}
-
+/* Grey variant of .button (text/weight inherited). */
 .secondary-button {
     -fx-background-color: #3A3D44;
     -fx-background-radius: 18;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
     -fx-padding: 9 18;
 }
 
@@ -769,7 +741,7 @@
 }
 
 .context-menu {
-    -fx-background-color: #2B2D31;
+    -fx-background-color: -c-panel;
     -fx-background-radius: 10;
     -fx-padding: 6;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 12, 0, 0, 4);
@@ -793,7 +765,7 @@
 .current-user-panel {
     -fx-padding: 10 12 10 12;
     -fx-background-color: #25272D;
-    -fx-border-color: #343740 transparent transparent transparent;
+    -fx-border-color: -c-elevated transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
 }
 
@@ -813,41 +785,27 @@
     -fx-text-overrun: ellipsis;
 }
 
-.profile-edit-button {
-    -fx-background-color: #343740;
-    -fx-text-fill: white;
-    -fx-font-size: 11px;
-    -fx-font-weight: bold;
-    -fx-background-radius: 14;
-    -fx-padding: 6 10;
-    -fx-min-width: 42px;
-    -fx-cursor: hand;
-}
-
-.profile-edit-button:hover {
-    -fx-background-color: #454852;
-}
-
+/* Profile / logout pills share everything but their min width. */
+.profile-edit-button,
 .logout-button {
-    -fx-background-color: #343740;
-    -fx-text-fill: white;
+    -fx-background-color: -c-elevated;
     -fx-font-size: 11px;
-    -fx-font-weight: bold;
     -fx-background-radius: 14;
     -fx-padding: 6 10;
-    -fx-min-width: 58px;
     -fx-cursor: hand;
 }
 
+.profile-edit-button { -fx-min-width: 42px; }
+.logout-button { -fx-min-width: 58px; }
+
+.profile-edit-button:hover,
 .logout-button:hover {
     -fx-background-color: #454852;
 }
 
 .danger-button {
     -fx-background-color: #ff4d5e;
-    -fx-text-fill: white;
     -fx-font-size: 13px;
-    -fx-font-weight: bold;
     -fx-background-radius: 18;
     -fx-padding: 9 20;
     -fx-cursor: hand;
@@ -864,7 +822,7 @@
 .online-status-dot {
     -fx-background-color: #3BA55D;
     -fx-background-radius: 50%;
-    -fx-border-color: #2B2D31;
+    -fx-border-color: -c-panel;
     -fx-border-width: 2.5;
     -fx-border-radius: 50%;
 }
@@ -873,14 +831,14 @@
 
 /* Composer highlight while editing an existing message */
 .composer-editing {
-    -fx-border-color: #5865F2;
+    -fx-border-color: -c-indigo;
     -fx-border-width: 1.5;
     -fx-border-radius: 18;
 }
 
 /* Right-click menu on your own messages */
 .message-context-menu {
-    -fx-background-color: #1E1F22;
+    -fx-background-color: -c-base;
     -fx-background-radius: 8;
     -fx-padding: 4;
 }
@@ -894,7 +852,7 @@
 }
 
 .message-context-menu .menu-item:focused {
-    -fx-background-color: #5865F2;
+    -fx-background-color: -c-indigo;
 }
 
 .message-context-menu .menu-item:focused .label {
