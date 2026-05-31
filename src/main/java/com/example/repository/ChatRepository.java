@@ -185,7 +185,7 @@ public class ChatRepository {
                 node.hasNonNull("lastMessageText") ? node.get("lastMessageText").asText() : null,
                 node.hasNonNull("lastMessageTime") ? node.get("lastMessageTime").asText() : null,
                 companionUserId,
-                0,
+                node.hasNonNull("unreadCount") ? node.get("unreadCount").asInt() : 0,
                 node.get("customName").asBoolean()
         );
     }
