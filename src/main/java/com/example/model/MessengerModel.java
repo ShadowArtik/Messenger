@@ -387,6 +387,89 @@ public class MessengerModel {
         return changed;
     }
 
+    /**
+     * Remove a message (by its client id) from a chat's in-memory list and refresh
+     * the chat-list preview if the deleted message was the last one.
+     * @return true if a message was removed.
+     */
+    public boolean deleteMessageLocal(int chatId, String clientId) {
+        if (clientId == null) {
+            return false;
+        }
+
+        ObservableList<Message> messages = chatMessages.get(chatId);
+
+        if (messages == null) {
+            return false;
+        }
+
+        boolean removed = messages.removeIf(m -> clientId.equals(m.getClientId()));
+
+        if (removed) {
+            refreshChatPreview(chatId, messages);
+        }
+
+        return removed;
+    }
+
+    /**
+     * Replace the text of a message (by its client id) and mark it as edited.
+     * @return true if a message was found and changed.
+     */
+    public boolean editMessageLocal(int chatId, String clientId, String newText) {
+        if (clientId == null || newText == null) {
+            return false;
+        }
+
+        ObservableList<Message> messages = chatMessages.get(chatId);
+
+        if (messages == null) {
+            return false;
+        }
+
+        for (int i = 0; i < messages.size(); i++) {
+            Message message = messages.get(i);
+
+            if (clientId.equals(message.getClientId())) {
+                message.setText(newText);
+                message.setEdited(true);
+
+                // Re-set the element so the ObservableList fires a change event and
+                // the cell is guaranteed to re-render (in-place mutation alone is not
+                // always picked up by the ListView on the editing client).
+                messages.set(i, message);
+
+                refreshChatPreview(chatId, messages);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Sync a chat's last-message preview to the current tail of its message list. */
+    private void refreshChatPreview(int chatId, ObservableList<Message> messages) {
+        Chat chat = findChatById(chatId);
+
+        if (chat == null) {
+            return;
+        }
+
+        int index = chats.indexOf(chat);
+
+        if (index == -1) {
+            return;
+        }
+
+        Message last = messages.isEmpty() ? null : messages.get(messages.size() - 1);
+
+        Chat updatedChat = last == null
+                ? chat.withLastMessage(null, null)
+                : chat.withLastMessage(last.getText(), last.getFormattedTime());
+
+        chats.set(index, updatedChat);
+    }
+
     public void setWebSocketClient(WebSocketClient webSocketClient) {
         this.webSocketClient = webSocketClient;
     }

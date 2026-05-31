@@ -68,7 +68,8 @@ public final class XmlProtocol {
             int receiverId,
             String senderUsername,
             String senderDisplayName,
-            String text
+            String text,
+            String msgId
     ) {
         return """
                 <message type="PRIVATE_MESSAGE">
@@ -78,6 +79,7 @@ public final class XmlProtocol {
                     <senderUsername>%s</senderUsername>
                     <senderDisplayName>%s</senderDisplayName>
                     <text>%s</text>
+                    <msgId>%s</msgId>
                 </message>
                 """.formatted(
                 chatId,
@@ -85,7 +87,8 @@ public final class XmlProtocol {
                 receiverId,
                 escape(senderUsername),
                 escape(senderDisplayName),
-                escape(text)
+                escape(text),
+                escape(msgId)
         );
     }
 
@@ -94,7 +97,8 @@ public final class XmlProtocol {
             int senderId,
             String senderUsername,
             String senderDisplayName,
-            String text
+            String text,
+            String msgId
     ) {
         return """
                 <message type="GROUP_MESSAGE">
@@ -103,14 +107,37 @@ public final class XmlProtocol {
                     <senderUsername>%s</senderUsername>
                     <senderDisplayName>%s</senderDisplayName>
                     <text>%s</text>
+                    <msgId>%s</msgId>
                 </message>
                 """.formatted(
                 chatId,
                 senderId,
                 escape(senderUsername),
                 escape(senderDisplayName),
-                escape(text)
+                escape(text),
+                escape(msgId)
         );
+    }
+
+    public static String deleteMessage(int chatId, int senderId, String msgId) {
+        return """
+                <message type="DELETE_MESSAGE">
+                    <chatId>%d</chatId>
+                    <senderId>%d</senderId>
+                    <msgId>%s</msgId>
+                </message>
+                """.formatted(chatId, senderId, escape(msgId));
+    }
+
+    public static String editMessage(int chatId, int senderId, String msgId, String newText) {
+        return """
+                <message type="EDIT_MESSAGE">
+                    <chatId>%d</chatId>
+                    <senderId>%d</senderId>
+                    <msgId>%s</msgId>
+                    <text>%s</text>
+                </message>
+                """.formatted(chatId, senderId, escape(msgId), escape(newText));
     }
 
     public static String typing(
@@ -215,6 +242,7 @@ public final class XmlProtocol {
         private String displayName;
         private String systemMessageText;
         private String text;
+        private String msgId;
         private List<Message> messages;
 
         public String getType() { return type; }
@@ -250,6 +278,9 @@ public final class XmlProtocol {
         public String getText() { return text; }
         public void setText(String text) { this.text = text; }
 
+        public String getMsgId() { return msgId; }
+        public void setMsgId(String msgId) { this.msgId = msgId; }
+
         public List<Message> getMessages() { return messages; }
         public void setMessages(List<Message> messages) { this.messages = messages; }
 
@@ -266,6 +297,8 @@ public final class XmlProtocol {
         public boolean isHistory() { return "HISTORY".equalsIgnoreCase(type); }
         public boolean isClearChat() { return "CLEAR_CHAT".equalsIgnoreCase(type); }
         public boolean isMessagesRead() { return "MESSAGES_READ".equalsIgnoreCase(type); }
+        public boolean isMessageDeleted() { return "MESSAGE_DELETED".equalsIgnoreCase(type); }
+        public boolean isMessageEdited() { return "MESSAGE_EDITED".equalsIgnoreCase(type); }
     }
 
     public static IncomingMessage parse(String xml) {
@@ -293,6 +326,7 @@ public final class XmlProtocol {
             message.setDisplayName(getText(root, "displayName"));
             message.setSystemMessageText(getText(root, "systemMessageText"));
             message.setText(getText(root, "text"));
+            message.setMsgId(getText(root, "msgId"));
 
             if ("HISTORY".equalsIgnoreCase(message.getType())) {
                 message.setMessages(parseMessages(root));
@@ -318,6 +352,13 @@ public final class XmlProtocol {
                     getTextFromElement(msg, "time")
             );
             message.setRead("true".equalsIgnoreCase(getTextFromElement(msg, "read")));
+
+            String msgId = getTextFromElement(msg, "msgId");
+            if (msgId != null && !msgId.isBlank()) {
+                message.setClientId(msgId);
+            }
+
+            message.setEdited("true".equalsIgnoreCase(getTextFromElement(msg, "edited")));
 
             String dateText = getTextFromElement(msg, "date");
             if (dateText != null && !dateText.isBlank()) {

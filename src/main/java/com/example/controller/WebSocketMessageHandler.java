@@ -79,6 +79,16 @@ public class WebSocketMessageHandler {
                 return;
             }
 
+            if (incoming.isMessageDeleted()) {
+                handleMessageDeleted(incoming);
+                return;
+            }
+
+            if (incoming.isMessageEdited()) {
+                handleMessageEdited(incoming);
+                return;
+            }
+
             if (incoming.isPrivateMessage() || incoming.isGroupMessage()) {
                 handleChatMessage(incoming);
             }
@@ -163,6 +173,12 @@ public class WebSocketMessageHandler {
                     incoming.getSenderDisplayName(),
                     incoming.getText()
             );
+
+            // Keep the same client id the sender generated, so edit/delete of this
+            // message resolves to the same row on every client.
+            if (incoming.getMsgId() != null && !incoming.getMsgId().isBlank()) {
+                incomingMessage.setClientId(incoming.getMsgId());
+            }
 
             updatedIncomingChat =
                     controller.model.addIncomingMessage(incomingChat, incomingMessage);
@@ -403,6 +419,44 @@ public class WebSocketMessageHandler {
 
         if (changed
                 && controller.selectedChat != null
+                && controller.selectedChat.getId() == chatId) {
+            controller.refreshMessages();
+        }
+    }
+
+    private void handleMessageDeleted(IncomingMessage incoming) {
+        int chatId = incoming.getChatId();
+
+        boolean changed = controller.model.deleteMessageLocal(chatId, incoming.getMsgId());
+
+        if (!changed) {
+            return;
+        }
+
+        controller.refreshContactList();
+
+        if (controller.selectedChat != null
+                && controller.selectedChat.getId() == chatId) {
+            controller.refreshMessages();
+        }
+    }
+
+    private void handleMessageEdited(IncomingMessage incoming) {
+        int chatId = incoming.getChatId();
+
+        boolean changed = controller.model.editMessageLocal(
+                chatId,
+                incoming.getMsgId(),
+                incoming.getText()
+        );
+
+        if (!changed) {
+            return;
+        }
+
+        controller.refreshContactList();
+
+        if (controller.selectedChat != null
                 && controller.selectedChat.getId() == chatId) {
             controller.refreshMessages();
         }

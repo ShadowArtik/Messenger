@@ -16,6 +16,9 @@ public class ChatActionsHandler {
 
     private final MessengerController c;
 
+    // Client id of the message currently being edited (null = composing a new one).
+    private String editingClientId;
+
     public ChatActionsHandler(MessengerController controller) {
         this.c = controller;
     }
@@ -238,7 +241,13 @@ public class ChatActionsHandler {
         String text = c.messageTextField.getText().trim();
 
         if (text.isEmpty()) {
+            cancelEdit();
             c.messageTextField.clear();
+            return;
+        }
+
+        if (editingClientId != null) {
+            commitEdit(text);
             return;
         }
 
@@ -246,6 +255,69 @@ public class ChatActionsHandler {
 
         c.messageTextField.clear();
         c.messageTextField.requestFocus();
+    }
+
+    // =================== Edit / delete a message ===================
+
+    void startEdit(Message message) {
+        if (message == null || c.selectedChat == null || c.selectedChat.isBot()) {
+            return;
+        }
+
+        editingClientId = message.getClientId();
+        c.setComposerEditing(true);
+        c.messageTextField.setText(message.getText());
+        c.messageTextField.requestFocus();
+        c.messageTextField.positionCaret(c.messageTextField.getText().length());
+    }
+
+    void cancelEdit() {
+        if (editingClientId == null) {
+            return;
+        }
+
+        editingClientId = null;
+        c.setComposerEditing(false);
+    }
+
+    private void commitEdit(String newText) {
+        Chat chat = c.selectedChat;
+        String clientId = editingClientId;
+
+        // The server applies the edit and broadcasts MESSAGE_EDITED back to everyone
+        // (including us), so the view updates through the same incoming-event path.
+        c.webSocketClient.sendEditMessage(
+                chat.getId(),
+                Session.getCurrentUser().getId(),
+                clientId,
+                newText
+        );
+
+        cancelEdit();
+        c.messageTextField.clear();
+        c.messageTextField.requestFocus();
+    }
+
+    void deleteMessage(Message message) {
+        if (message == null || c.selectedChat == null || c.selectedChat.isBot()) {
+            return;
+        }
+
+        String clientId = message.getClientId();
+        Chat chat = c.selectedChat;
+
+        // If we were editing the message we just deleted, leave edit mode.
+        if (clientId != null && clientId.equals(editingClientId)) {
+            cancelEdit();
+            c.messageTextField.clear();
+        }
+
+        // Server deletes and broadcasts MESSAGE_DELETED to all members (us included).
+        c.webSocketClient.sendDeleteMessage(
+                chat.getId(),
+                Session.getCurrentUser().getId(),
+                clientId
+        );
     }
 
     void attachImage() {
@@ -316,7 +388,8 @@ public class ChatActionsHandler {
                     Session.getCurrentUser().getId(),
                     Session.getCurrentUser().getUsername(),
                     Session.getCurrentUser().getDisplayName(),
-                    text
+                    text,
+                    userMessage.getClientId()
             );
         } else {
             Integer companionUserId = c.selectedChat.getCompanionUserId();
@@ -328,7 +401,8 @@ public class ChatActionsHandler {
                         companionUserId,
                         Session.getCurrentUser().getUsername(),
                         Session.getCurrentUser().getDisplayName(),
-                        text
+                        text,
+                        userMessage.getClientId()
                 );
             }
         }

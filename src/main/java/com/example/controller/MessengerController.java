@@ -14,6 +14,8 @@ import com.example.view.overlay.MessengerOverlays;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -26,6 +28,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.ScrollBar;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
@@ -174,8 +177,16 @@ public class MessengerController {
 
         messagesListView.setCellFactory(listView -> MessengerCells.messageCell(
                 () -> selectedChat != null && selectedChat.isGroup(),
-                () -> selectedChat != null && !selectedChat.isBot()
+                () -> selectedChat != null && !selectedChat.isBot(),
+                () -> selectedChat != null && !selectedChat.isBot(),
+                this::onEditMessage,
+                this::onDeleteMessage
         ));
+
+        // Messages are display-only: disable selection so left-clicking a message
+        // doesn't flash a selection/focus highlight.
+        messagesListView.setSelectionModel(new NoSelectionModel<>());
+        messagesListView.setFocusTraversable(false);
 
         showEmptyChatState();
 
@@ -205,6 +216,8 @@ public class MessengerController {
             if (scene != null) {
                 scene.setOnKeyPressed(event -> {
                     if (event.getCode() == KeyCode.ESCAPE) {
+                        chatActions.cancelEdit();
+                        messageTextField.clear();
                         hideAllOverlays();
                     }
                 });
@@ -224,6 +237,7 @@ public class MessengerController {
             return;
         }
 
+        chatActions.cancelEdit();
         hideTypingLabel();
 
         int unreadCountBeforeOpen = chat.getUnreadCount();
@@ -599,6 +613,42 @@ public class MessengerController {
 
     @FXML
     private void onAttachClick() { chatActions.attachImage(); }
+
+    /** Selection model that never selects anything (messages list is display-only). */
+    private static final class NoSelectionModel<T> extends MultipleSelectionModel<T> {
+        @Override public ObservableList<Integer> getSelectedIndices() { return FXCollections.emptyObservableList(); }
+        @Override public ObservableList<T> getSelectedItems() { return FXCollections.emptyObservableList(); }
+        @Override public void selectIndices(int index, int... indices) { }
+        @Override public void selectAll() { }
+        @Override public void selectFirst() { }
+        @Override public void selectLast() { }
+        @Override public void clearAndSelect(int index) { }
+        @Override public void select(int index) { }
+        @Override public void select(T obj) { }
+        @Override public void clearSelection(int index) { }
+        @Override public void clearSelection() { }
+        @Override public boolean isSelected(int index) { return false; }
+        @Override public boolean isEmpty() { return true; }
+        @Override public void selectPrevious() { }
+        @Override public void selectNext() { }
+    }
+
+    private void onEditMessage(Message message) { chatActions.startEdit(message); }
+
+    private void onDeleteMessage(Message message) { chatActions.deleteMessage(message); }
+
+    /** Toggle the "editing a message" visual state on the composer. */
+    void setComposerEditing(boolean editing) {
+        if (editing) {
+            if (!messageTextField.getStyleClass().contains("composer-editing")) {
+                messageTextField.getStyleClass().add("composer-editing");
+            }
+            messageTextField.setPromptText("Editing message — Esc to cancel");
+        } else {
+            messageTextField.getStyleClass().remove("composer-editing");
+            messageTextField.setPromptText("Enter message");
+        }
+    }
 
 
     // =================== WebSocket handling → WebSocketMessageHandler ===================

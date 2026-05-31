@@ -92,7 +92,8 @@ public class WebSocketClient {
             int receiverId,
             String senderUsername,
             String senderDisplayName,
-            String text
+            String text,
+            String msgId
     ) {
         String privateMessage = XmlProtocol.privateMessage(
                 chatId,
@@ -100,7 +101,8 @@ public class WebSocketClient {
                 receiverId,
                 senderUsername,
                 senderDisplayName,
-                text
+                text,
+                msgId
         );
 
         sendMessage(privateMessage);
@@ -111,15 +113,25 @@ public class WebSocketClient {
             int senderId,
             String senderUsername,
             String senderDisplayName,
-            String text
+            String text,
+            String msgId
     ) {
         sendMessage(XmlProtocol.groupMessage(
                 chatId,
                 senderId,
                 senderUsername,
                 senderDisplayName,
-                text
+                text,
+                msgId
         ));
+    }
+
+    public void sendDeleteMessage(int chatId, int senderId, String msgId) {
+        sendMessage(XmlProtocol.deleteMessage(chatId, senderId, msgId));
+    }
+
+    public void sendEditMessage(int chatId, int senderId, String msgId, String newText) {
+        sendMessage(XmlProtocol.editMessage(chatId, senderId, msgId, newText));
     }
 
     public void sendTypingMessage(

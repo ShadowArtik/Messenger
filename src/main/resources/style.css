@@ -158,14 +158,35 @@
     -fx-background-color: transparent;
 }
 
+/* Remove the focus ring modena draws around the list when it gains focus
+   (clicking anywhere in the chat, even empty space, otherwise flashes it). */
+.messages-list:focused {
+    -fx-background-color: #2B2D31;
+    -fx-background-insets: 0;
+    -fx-border-color: transparent;
+}
+
+.messages-list .list-cell:empty,
+.messages-list .list-cell:empty:hover,
+.messages-list .list-cell:empty:focused {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-color: transparent;
+}
+
 .messages-list .list-cell,
 .messages-list .list-cell:hover,
+.messages-list .list-cell:focused,
+.messages-list .list-cell:filled:focused,
 .messages-list .list-cell:selected,
 .messages-list .list-cell:selected:hover,
 .messages-list .list-cell:filled:selected,
+.messages-list .list-cell:filled:focused:selected,
 .messages-list .list-cell:filled:selected:hover {
     -fx-background-color: transparent;
+    -fx-background-insets: 0;
     -fx-background-radius: 0;
+    -fx-border-color: transparent;
     -fx-font-weight: normal;
     -fx-padding: 4;
 }
@@ -846,4 +867,43 @@
     -fx-border-color: #2B2D31;
     -fx-border-width: 2.5;
     -fx-border-radius: 50%;
+}
+
+/* ===== Edit / delete a message ===== */
+
+/* Composer highlight while editing an existing message */
+.composer-editing {
+    -fx-border-color: #5865F2;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 18;
+}
+
+/* Right-click menu on your own messages */
+.message-context-menu {
+    -fx-background-color: #1E1F22;
+    -fx-background-radius: 8;
+    -fx-padding: 4;
+}
+
+.message-context-menu .menu-item {
+    -fx-background-radius: 6;
+}
+
+.message-context-menu .menu-item .label {
+    -fx-text-fill: #DBDEE1;
+}
+
+.message-context-menu .menu-item:focused {
+    -fx-background-color: #5865F2;
+}
+
+.message-context-menu .menu-item:focused .label {
+    -fx-text-fill: white;
+}
+
+/* "edited" marker in a message bubble footer */
+.message-edited-label {
+    -fx-text-fill: #B5BAC1;
+    -fx-font-size: 10px;
+    -fx-font-style: italic;
 }

@@ -13,8 +13,10 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -133,7 +135,10 @@ public final class MessengerCells {
 
     public static ListCell<Message> messageCell(
             BooleanSupplier currentChatIsGroup,
-            BooleanSupplier currentChatShowsReceipts
+            BooleanSupplier currentChatShowsReceipts,
+            BooleanSupplier currentChatCanModify,
+            Consumer<Message> onEdit,
+            Consumer<Message> onDelete
     ) {
         return new ListCell<>() {
             @Override
@@ -143,6 +148,7 @@ public final class MessengerCells {
                 if (empty || message == null) {
                     setText(null);
                     setGraphic(null);
+                    setContextMenu(null);
                     return;
                 }
 
@@ -189,7 +195,16 @@ public final class MessengerCells {
                 Label timeLabel = new Label(message.getFormattedTime());
                 timeLabel.getStyleClass().add("message-time");
 
-                Node bubbleFooter = timeLabel;
+                HBox footer = new HBox(4);
+                footer.setAlignment(isMine ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+
+                if (message.isEdited()) {
+                    Label editedLabel = new Label("edited");
+                    editedLabel.getStyleClass().add("message-edited-label");
+                    footer.getChildren().add(editedLabel);
+                }
+
+                footer.getChildren().add(timeLabel);
 
                 if (isMine && currentChatShowsReceipts.getAsBoolean()) {
                     Label receipt = new Label(message.isRead() ? "✓✓" : "✓");
@@ -197,10 +212,10 @@ public final class MessengerCells {
                             message.isRead() ? "read-receipt-read" : "read-receipt-sent"
                     );
 
-                    HBox footer = new HBox(4, timeLabel, receipt);
-                    footer.setAlignment(Pos.CENTER_RIGHT);
-                    bubbleFooter = footer;
+                    footer.getChildren().add(receipt);
                 }
+
+                Node bubbleFooter = footer;
 
                 VBox bubble = new VBox(3, content, bubbleFooter);
                 bubble.getStyleClass().add("message-bubble");
@@ -253,6 +268,32 @@ public final class MessengerCells {
                     messageBox.setAlignment(Pos.CENTER_LEFT);
                     bubble.getStyleClass().add("message-bubble-incoming");
                     messageBox.getChildren().add(bubbleBox);
+                }
+
+                // Right-click menu to edit/delete your own messages (not in bot chats,
+                // not on system messages, and only when the message has a known id).
+                boolean canModify = isMine
+                        && !message.isSystem()
+                        && message.getClientId() != null
+                        && currentChatCanModify.getAsBoolean();
+
+                if (canModify) {
+                    ContextMenu menu = new ContextMenu();
+                    menu.getStyleClass().add("message-context-menu");
+
+                    if (imageId == null) {
+                        MenuItem editItem = new MenuItem("Edit");
+                        editItem.setOnAction(e -> onEdit.accept(message));
+                        menu.getItems().add(editItem);
+                    }
+
+                    MenuItem deleteItem = new MenuItem("Delete");
+                    deleteItem.setOnAction(e -> onDelete.accept(message));
+                    menu.getItems().add(deleteItem);
+
+                    setContextMenu(menu);
+                } else {
+                    setContextMenu(null);
                 }
 
                 setText(null);

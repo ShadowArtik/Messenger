@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 public class Message {
 
@@ -12,8 +13,18 @@ public class Message {
     private final Integer senderId;
     private final String senderUsername;
     private final String senderDisplayName;
-    private final String text;
+
+    // Text is mutable: editing a message rewrites it in place.
+    private String text;
     private final String time;
+
+    // Client-generated id (UUID) that identifies this message across all clients
+    // and the server, so it can be referenced for edit/delete. May be null for
+    // legacy/system/bot messages that were never assigned one.
+    private String clientId = UUID.randomUUID().toString();
+
+    // Flipped to true once the message text has been edited.
+    private boolean edited;
 
     // Read status is the one mutable bit of a message: it flips to true once the
     // recipient has read it (private chats only).
@@ -75,6 +86,26 @@ public class Message {
 
     public String getStorageText() {
         return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public boolean isEdited() {
+        return edited;
+    }
+
+    public void setEdited(boolean edited) {
+        this.edited = edited;
     }
 
     public String getFormattedTime() {
