@@ -447,6 +447,42 @@ public class MessengerModel {
         return false;
     }
 
+    /**
+     * Refresh only the chat-list preview (last message text/time) of one chat from
+     * the server. Used when an edit/delete arrives for a chat whose messages aren't
+     * loaded in memory (it was never opened), so the preview can't be recomputed
+     * locally from the message list.
+     */
+    public void refreshChatPreviewFromServer(int chatId) {
+        if (Session.getCurrentUser() == null) {
+            return;
+        }
+
+        Chat local = findChatById(chatId);
+
+        if (local == null) {
+            return;
+        }
+
+        List<Chat> serverChats = chatRepository.getChatsForUser(Session.getCurrentUser().getId());
+
+        for (Chat serverChat : serverChats) {
+            if (serverChat.getId() == chatId) {
+                int index = chats.indexOf(local);
+
+                if (index != -1) {
+                    Chat updated = local.withLastMessage(
+                            serverChat.getLastMessageText(),
+                            serverChat.getLastMessageTime()
+                    );
+                    chats.set(index, updated);
+                }
+
+                return;
+            }
+        }
+    }
+
     /** Sync a chat's last-message preview to the current tail of its message list. */
     private void refreshChatPreview(int chatId, ObservableList<Message> messages) {
         Chat chat = findChatById(chatId);

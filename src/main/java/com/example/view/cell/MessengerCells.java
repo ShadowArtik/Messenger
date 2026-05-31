@@ -272,6 +272,8 @@ public final class MessengerCells {
 
                 // Right-click menu to edit/delete your own messages (not in bot chats,
                 // not on system messages, and only when the message has a known id).
+                // Attached to the bubble itself — not the whole row — so right-clicking
+                // the empty space beside a message does nothing.
                 boolean canModify = isMine
                         && !message.isSystem()
                         && message.getClientId() != null
@@ -291,10 +293,14 @@ public final class MessengerCells {
                     deleteItem.setOnAction(e -> onDelete.accept(message));
                     menu.getItems().add(deleteItem);
 
-                    setContextMenu(menu);
-                } else {
-                    setContextMenu(null);
+                    bubble.setOnContextMenuRequested(e -> {
+                        menu.show(bubble, e.getScreenX(), e.getScreenY());
+                        e.consume();
+                    });
                 }
+
+                // Never attach the menu to the whole list cell.
+                setContextMenu(null);
 
                 setText(null);
 

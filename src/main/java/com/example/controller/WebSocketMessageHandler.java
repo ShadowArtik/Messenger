@@ -430,7 +430,8 @@ public class WebSocketMessageHandler {
         boolean changed = controller.model.deleteMessageLocal(chatId, incoming.getMsgId());
 
         if (!changed) {
-            return;
+            // Chat not loaded in memory — refresh its preview straight from the server.
+            controller.model.refreshChatPreviewFromServer(chatId);
         }
 
         controller.refreshContactList();
@@ -451,7 +452,7 @@ public class WebSocketMessageHandler {
         );
 
         if (!changed) {
-            return;
+            controller.model.refreshChatPreviewFromServer(chatId);
         }
 
         controller.refreshContactList();
