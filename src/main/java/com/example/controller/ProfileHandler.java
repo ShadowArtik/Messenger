@@ -3,7 +3,7 @@ package com.example.controller;
 import com.example.model.Session;
 import com.example.model.User;
 import com.example.view.Avatars;
-import com.example.view.overlay.MessengerOverlays;
+import com.example.view.MessengerOverlays;
 
 /**
  * Current-user profile: the sidebar card and the "edit display name" overlay,

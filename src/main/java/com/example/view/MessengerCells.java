@@ -1,11 +1,9 @@
-package com.example.view.cell;
+package com.example.view;
 
 import com.example.model.Chat;
 import com.example.model.Message;
 import com.example.model.Session;
 import com.example.model.User;
-import com.example.view.Avatars;
-import com.example.view.ImageStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;

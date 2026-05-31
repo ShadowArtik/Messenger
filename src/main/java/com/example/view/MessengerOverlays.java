@@ -1,4 +1,4 @@
-package com.example.view.overlay;
+package com.example.view;
 
 import com.example.model.Chat;
 import com.example.model.User;

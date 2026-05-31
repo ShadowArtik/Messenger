@@ -5,7 +5,7 @@ import com.example.model.Message;
 import com.example.model.Session;
 import com.example.network.ServerApi;
 import com.example.service.result.CreateChatResponse;
-import com.example.view.overlay.MessengerOverlays;
+import com.example.view.MessengerOverlays;
 import javafx.stage.FileChooser;
 
 import java.io.File;
