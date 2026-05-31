@@ -150,6 +150,10 @@
                                promptText="Enter message"
                                HBox.hgrow="ALWAYS"/>
 
+                    <Button text="📎"
+                            onAction="#onAttachClick"
+                            styleClass="attach-button"/>
+
                     <Button fx:id="sendButton"
                             text="Send"
                             onAction="#onSendButtonClick"

@@ -106,6 +106,21 @@ public class UserRepository {
         return users;
     }
 
+    /** @return companion's last-seen time as epoch millis, or {@code null} if unknown. */
+    public Long getLastSeen(int userId) {
+        HttpResponse<String> response = api.get("/api/users/" + userId + "/last-seen");
+
+        if (response.statusCode() != 200) {
+            return null;
+        }
+
+        try {
+            return Long.parseLong(response.body().trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private User toUser(JsonNode node) {
         if (node == null || node.isNull()) {
             return null;

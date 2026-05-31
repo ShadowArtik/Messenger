@@ -74,6 +74,11 @@ public class WebSocketMessageHandler {
                 return;
             }
 
+            if (incoming.isMessagesRead()) {
+                handleMessagesRead(incoming);
+                return;
+            }
+
             if (incoming.isPrivateMessage() || incoming.isGroupMessage()) {
                 handleChatMessage(incoming);
             }
@@ -184,6 +189,14 @@ public class WebSocketMessageHandler {
             controller.selectChatInList(updatedIncomingChat);
             controller.showMessagesForCurrentChat();
             controller.scrollMessagesToBottom();
+
+            if (!updatedIncomingChat.isBot() && !isOwnMessage) {
+                controller.webSocketClient.sendMessageRead(
+                        updatedIncomingChat.getId(),
+                        Session.getCurrentUser().getId()
+                );
+            }
+
             return;
         }
 
@@ -381,6 +394,18 @@ public class WebSocketMessageHandler {
         }
 
         controller.refreshContactList();
+    }
+
+    private void handleMessagesRead(IncomingMessage incoming) {
+        int chatId = incoming.getChatId();
+
+        boolean changed = controller.model.markOutgoingMessagesRead(chatId);
+
+        if (changed
+                && controller.selectedChat != null
+                && controller.selectedChat.getId() == chatId) {
+            controller.refreshMessages();
+        }
     }
 
     private void handleClearChat(IncomingMessage incoming) {

@@ -8,6 +8,7 @@ import com.example.model.User;
 import com.example.service.UserService;
 import com.example.network.WebSocketClient;
 import com.example.view.Avatars;
+import com.example.view.LastSeen;
 import com.example.view.cell.MessengerCells;
 import com.example.view.overlay.MessengerOverlays;
 import javafx.animation.PauseTransition;
@@ -63,7 +64,7 @@ public class MessengerController {
     @FXML
     private StackPane logoutOverlay;
     @FXML
-    private StackPane profileOverlay;
+    StackPane profileOverlay;
     @FXML
     StackPane createGroupOverlay;
     @FXML
@@ -79,15 +80,15 @@ public class MessengerController {
     @FXML
     private TextField chatSearchField;
     @FXML
-    private StackPane currentUserAvatar;
+    StackPane currentUserAvatar;
     @FXML
-    private Label currentUserDisplayNameLabel;
+    Label currentUserDisplayNameLabel;
     @FXML
-    private Label currentUserUsernameLabel;
+    Label currentUserUsernameLabel;
     @FXML
-    private Label profileUsernameLabel;
+    Label profileUsernameLabel;
     @FXML
-    private TextField profileDisplayNameField;
+    TextField profileDisplayNameField;
     @FXML
     TextField groupNameField;
     @FXML
@@ -124,7 +125,8 @@ public class MessengerController {
     PauseTransition typingHideDelay;
     private GroupHandler groupHandler;
     private ChatActionsHandler chatActions;
-    private final UserService userService = new UserService();
+    private ProfileHandler profileHandler;
+    final UserService userService = new UserService();
     private FilteredList<Chat> filteredChats;
     private final Set<Integer> typingChatIds = new HashSet<>();
     final Set<Integer> selectedGroupMemberIds = new HashSet<>();
@@ -142,6 +144,7 @@ public class MessengerController {
         model.setWebSocketClient(webSocketClient);
         groupHandler = new GroupHandler(this);
         chatActions = new ChatActionsHandler(this);
+        profileHandler = new ProfileHandler(this);
 
         webSocketClient.connect(
                 Session.getCurrentUser().getId(),
@@ -170,7 +173,8 @@ public class MessengerController {
         ));
 
         messagesListView.setCellFactory(listView -> MessengerCells.messageCell(
-                () -> selectedChat != null && selectedChat.isGroup()
+                () -> selectedChat != null && selectedChat.isGroup(),
+                () -> selectedChat != null && !selectedChat.isBot()
         ));
 
         showEmptyChatState();
@@ -212,7 +216,7 @@ public class MessengerController {
         setupGroupMembersList();
         setupGroupInfoMembersList();
         setupAddMembersList();
-        setupCurrentUserProfile();
+        profileHandler.setupCurrentUserProfile();
     }
 
     void openChat(Chat chat) {
@@ -248,6 +252,13 @@ public class MessengerController {
         );
 
         webSocketClient.sendLoadHistory(selectedChat.getId());
+
+        if (!selectedChat.isBot()) {
+            webSocketClient.sendMessageRead(
+                    selectedChat.getId(),
+                    Session.getCurrentUser().getId()
+            );
+        }
 
         int messageCount = model.getMessagesForChat(selectedChat).size();
 
@@ -390,6 +401,10 @@ public class MessengerController {
         }
     }
 
+    void refreshMessages() {
+        messagesListView.refresh();
+    }
+
     boolean isGroupInfoVisible() {
         return groupInfoOverlay != null && groupInfoOverlay.isVisible();
     }
@@ -445,88 +460,32 @@ public class MessengerController {
             return;
         }
 
+        if (chat.isPrivate() && chat.getCompanionUserId() != null) {
+            chatSubtitleLabel.setText(companionPresence(chat.getCompanionUserId()));
+            chatSubtitleLabel.setVisible(true);
+            chatSubtitleLabel.setManaged(true);
+            return;
+        }
+
         chatSubtitleLabel.setText("");
         chatSubtitleLabel.setVisible(false);
         chatSubtitleLabel.setManaged(false);
     }
 
-    private void setupCurrentUserProfile() {
-        if (Session.getCurrentUser() == null) {
-            return;
+    private String companionPresence(int companionUserId) {
+        if (model.isUserOnline(companionUserId)) {
+            return "online";
         }
 
-        String displayName = Session.getCurrentUser().getDisplayName();
-        String username = Session.getCurrentUser().getUsername();
-
-        currentUserDisplayNameLabel.setText(displayName);
-        currentUserUsernameLabel.setText("@" + username);
-
-        currentUserAvatar.getChildren().clear();
-        currentUserAvatar.getChildren().add(
-                Avatars.base(displayName, 18)
-        );
+        Long lastSeen = userService.getLastSeen(companionUserId);
+        return lastSeen == null ? "last seen recently" : LastSeen.format(lastSeen);
     }
 
     @FXML
-    private void onEditProfileClick() {
-        if (Session.getCurrentUser() == null) {
-            return;
-        }
-
-        hideAllOverlays();
-
-        MessengerOverlays.showProfile(
-                profileOverlay,
-                profileUsernameLabel,
-                profileDisplayNameField,
-                Session.getCurrentUser()
-        );
-    }
+    private void onEditProfileClick() { profileHandler.openProfile(); }
 
     @FXML
-    private void onSaveProfileClick() {
-        if (Session.getCurrentUser() == null) {
-            return;
-        }
-
-        String newDisplayName = profileDisplayNameField.getText().trim();
-
-        if (newDisplayName.isEmpty()) {
-            showMessage(
-                    "Invalid name",
-                    "Display name cannot be empty."
-            );
-            return;
-        }
-
-        boolean updated = userService.updateDisplayName(
-                Session.getCurrentUser().getId(),
-                newDisplayName
-        );
-
-        if (!updated) {
-            showMessage(
-                    "Error",
-                    "Could not update display name."
-            );
-            return;
-        }
-
-        User updatedUser = new User(
-                Session.getCurrentUser().getId(),
-                Session.getCurrentUser().getUsername(),
-                newDisplayName
-        );
-
-        Session.setCurrentUser(updatedUser);
-
-        setupCurrentUserProfile();
-        webSocketClient.sendProfileUpdatedMessage(
-                updatedUser.getId(),
-                updatedUser.getDisplayName()
-        );
-        hideAllOverlays();
-    }
+    private void onSaveProfileClick() { profileHandler.saveProfile(); }
 
     @FXML
     private void onMenuButtonClick() {
@@ -564,7 +523,7 @@ public class MessengerController {
         if (chatContextMenu.isShowing()) {
             chatContextMenu.hide();
         } else {
-            chatContextMenu.show(menuButton, Side.BOTTOM, 0, 0);
+            chatContextMenu.show(menuButton, Side.BOTTOM, -100, 0);
         }
     }
 
@@ -637,6 +596,9 @@ public class MessengerController {
 
     @FXML
     private void onSendButtonClick() { chatActions.sendMessage(); }
+
+    @FXML
+    private void onAttachClick() { chatActions.attachImage(); }
 
 
     // =================== WebSocket handling → WebSocketMessageHandler ===================
@@ -737,7 +699,7 @@ public class MessengerController {
         addChatContextMenu.show(
                 addChatButton,
                 Side.BOTTOM,
-                -150,
+                0,
                 6
         );
     }

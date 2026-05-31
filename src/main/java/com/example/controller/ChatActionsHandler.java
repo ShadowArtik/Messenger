@@ -3,9 +3,13 @@ package com.example.controller;
 import com.example.model.Chat;
 import com.example.model.Message;
 import com.example.model.Session;
+import com.example.network.ServerApi;
 import com.example.service.result.CreateChatResponse;
 import com.example.view.overlay.MessengerOverlays;
+import javafx.stage.FileChooser;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 
 public class ChatActionsHandler {
@@ -238,6 +242,49 @@ public class ChatActionsHandler {
             return;
         }
 
+        sendText(text);
+
+        c.messageTextField.clear();
+        c.messageTextField.requestFocus();
+    }
+
+    void attachImage() {
+        if (c.selectedChat == null || c.selectedChat.isBot()) {
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Choose image");
+        chooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp")
+        );
+
+        File file = chooser.showOpenDialog(c.messageTextField.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        try {
+            byte[] data = Files.readAllBytes(file.toPath());
+            String contentType = Files.probeContentType(file.toPath());
+
+            int attachmentId = new ServerApi().uploadFile(data, contentType);
+
+            if (attachmentId < 0) {
+                c.showMessage("Error", "Could not upload the image.");
+                return;
+            }
+
+            sendText("[IMG]" + attachmentId);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            c.showMessage("Error", "Could not send the image.");
+        }
+    }
+
+    private void sendText(String text) {
         Message userMessage = new Message(
                 Session.getCurrentUser().getId(),
                 Session.getCurrentUser().getUsername(),
@@ -285,8 +332,5 @@ public class ChatActionsHandler {
                 );
             }
         }
-
-        c.messageTextField.clear();
-        c.messageTextField.requestFocus();
     }
 }

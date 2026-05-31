@@ -75,6 +75,10 @@ public class UserService {
         return userRepository.findByUsername(username);
     }
 
+    public Long getLastSeen(int userId) {
+        return userRepository.getLastSeen(userId);
+    }
+
     public User createSystemUserIfNotExists(String username, String displayName) {
         return userRepository.createSystemUserIfNotExists(username, displayName);
     }

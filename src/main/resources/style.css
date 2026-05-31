@@ -192,8 +192,8 @@
 }
 
 .text-field:focused {
-    -fx-border-color: #5B9DFF;
-    -fx-border-width: 1.5;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
 }
 
 .chat-search-box {
@@ -251,6 +251,23 @@
     -fx-text-fill: white;
     -fx-font-weight: bold;
     -fx-padding: 10 20;
+}
+
+.attach-button {
+    -fx-background-color: #383A40;
+    -fx-background-radius: 999;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-min-width: 38px;
+    -fx-min-height: 38px;
+    -fx-max-width: 38px;
+    -fx-max-height: 38px;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+
+.attach-button:hover {
+    -fx-background-color: #45474E;
 }
 
 .send-button:hover {
@@ -317,6 +334,15 @@
     -fx-background-radius: 18;
 }
 
+.date-separator {
+    -fx-background-color: #3A3D44;
+    -fx-text-fill: #C8CDD6;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 4 12 4 12;
+    -fx-background-radius: 12;
+}
+
 .message-bubble-outgoing {
     -fx-background-color: #5B9DFF;
 }
@@ -340,6 +366,17 @@
 .message-time {
     -fx-text-fill: rgba(255, 255, 255, 0.65);
     -fx-font-size: 11px;
+}
+
+.read-receipt-sent {
+    -fx-text-fill: rgba(255, 255, 255, 0.55);
+    -fx-font-size: 11px;
+}
+
+.read-receipt-read {
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
 }
 
 .message-sender-label {
@@ -564,8 +601,8 @@
 }
 
 .dialog-input:focused {
-    -fx-border-color: #5B9DFF;
-    -fx-border-width: 1.5;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
 }
 
 .dialog-error {

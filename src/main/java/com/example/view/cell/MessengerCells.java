@@ -5,8 +5,12 @@ import com.example.model.Message;
 import com.example.model.Session;
 import com.example.model.User;
 import com.example.view.Avatars;
+import com.example.view.ImageStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
@@ -18,6 +22,10 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -78,7 +86,7 @@ public final class MessengerCells {
                 } else if (chat.getLastMessageText() == null || chat.getLastMessageText().isBlank()) {
                     lastMessageLabel.setText("No messages yet");
                 } else {
-                    lastMessageLabel.setText(chat.getLastMessageText());
+                    lastMessageLabel.setText(previewText(chat.getLastMessageText()));
                 }
 
                 lastMessageLabel.getStyleClass().add("chat-last-message-label");
@@ -123,7 +131,10 @@ public final class MessengerCells {
         };
     }
 
-    public static ListCell<Message> messageCell(BooleanSupplier currentChatIsGroup) {
+    public static ListCell<Message> messageCell(
+            BooleanSupplier currentChatIsGroup,
+            BooleanSupplier currentChatShowsReceipts
+    ) {
         return new ListCell<>() {
             @Override
             protected void updateItem(Message message, boolean empty) {
@@ -135,21 +146,63 @@ public final class MessengerCells {
                     return;
                 }
 
+                boolean showDateHeader;
+                int index = getIndex();
+                if (index <= 0) {
+                    showDateHeader = true;
+                } else {
+                    Message previous = getListView().getItems().get(index - 1);
+                    showDateHeader = previous == null
+                            || previous.getDate() == null
+                            || !previous.getDate().equals(message.getDate());
+                }
+
                 boolean isMine = message.getSenderUsername().equals(
                         Session.getCurrentUser().getUsername()
                 );
 
                 boolean isGroupChat = currentChatIsGroup.getAsBoolean();
 
-                Label textLabel = new Label(message.getText());
-                textLabel.setWrapText(true);
-                textLabel.setMaxWidth(280);
-                textLabel.getStyleClass().add("message-text");
+                Node content;
+                Integer imageId = imageId(message.getText());
+
+                if (imageId != null) {
+                    ImageView imageView = new ImageView();
+                    imageView.setPreserveRatio(true);
+                    imageView.setFitWidth(220);
+                    imageView.setFitHeight(280);
+
+                    Image image = ImageStore.get(imageId);
+                    if (image != null) {
+                        imageView.setImage(image);
+                    }
+
+                    content = imageView;
+                } else {
+                    Label textLabel = new Label(message.getText());
+                    textLabel.setWrapText(true);
+                    textLabel.setMaxWidth(280);
+                    textLabel.getStyleClass().add("message-text");
+                    content = textLabel;
+                }
 
                 Label timeLabel = new Label(message.getFormattedTime());
                 timeLabel.getStyleClass().add("message-time");
 
-                VBox bubble = new VBox(3, textLabel, timeLabel);
+                Node bubbleFooter = timeLabel;
+
+                if (isMine && currentChatShowsReceipts.getAsBoolean()) {
+                    Label receipt = new Label(message.isRead() ? "✓✓" : "✓");
+                    receipt.getStyleClass().add(
+                            message.isRead() ? "read-receipt-read" : "read-receipt-sent"
+                    );
+
+                    HBox footer = new HBox(4, timeLabel, receipt);
+                    footer.setAlignment(Pos.CENTER_RIGHT);
+                    bubbleFooter = footer;
+                }
+
+                VBox bubble = new VBox(3, content, bubbleFooter);
                 bubble.getStyleClass().add("message-bubble");
 
                 VBox bubbleBox = new VBox(1);
@@ -203,9 +256,59 @@ public final class MessengerCells {
                 }
 
                 setText(null);
-                setGraphic(messageBox);
+
+                if (showDateHeader) {
+                    Label dateLabel = new Label(formatDay(message.getDate()));
+                    dateLabel.getStyleClass().add("date-separator");
+
+                    HBox dateRow = new HBox(dateLabel);
+                    dateRow.setAlignment(Pos.CENTER);
+
+                    setGraphic(new VBox(8, dateRow, messageBox));
+                } else {
+                    setGraphic(messageBox);
+                }
             }
         };
+    }
+
+    /** Parse the attachment id from an "[IMG]42" message marker, or null if not an image. */
+    private static Integer imageId(String text) {
+        if (text == null || !text.startsWith("[IMG]")) {
+            return null;
+        }
+
+        try {
+            return Integer.parseInt(text.substring(5).trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String previewText(String text) {
+        return imageId(text) != null ? "📷 Photo" : text;
+    }
+
+    private static String formatDay(LocalDate date) {
+        if (date == null) {
+            return "";
+        }
+
+        LocalDate today = LocalDate.now(ZoneId.of("Europe/Kyiv"));
+
+        if (date.equals(today)) {
+            return "Today";
+        }
+
+        if (date.equals(today.minusDays(1))) {
+            return "Yesterday";
+        }
+
+        if (date.getYear() == today.getYear()) {
+            return date.format(DateTimeFormatter.ofPattern("MMMM d", Locale.ENGLISH));
+        }
+
+        return date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH));
     }
 
     public static ListCell<Chat> groupMemberSelectionCell(

@@ -361,6 +361,32 @@ public class MessengerModel {
         return updatedChat;
     }
 
+    /**
+     * Mark the current user's own messages in a chat as read (incoming MESSAGES_READ).
+     * @return true if any message changed (so the view needs a refresh).
+     */
+    public boolean markOutgoingMessagesRead(int chatId) {
+        ObservableList<Message> messages = chatMessages.get(chatId);
+
+        if (messages == null || Session.getCurrentUser() == null) {
+            return false;
+        }
+
+        int currentUserId = Session.getCurrentUser().getId();
+        boolean changed = false;
+
+        for (Message message : messages) {
+            if (message.getSenderId() != null
+                    && message.getSenderId() == currentUserId
+                    && !message.isRead()) {
+                message.setRead(true);
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
     public void setWebSocketClient(WebSocketClient webSocketClient) {
         this.webSocketClient = webSocketClient;
     }

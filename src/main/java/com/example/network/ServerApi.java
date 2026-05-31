@@ -39,6 +39,41 @@ public class ServerApi {
         return send("DELETE", path, null);
     }
 
+    /** Upload raw bytes; returns the created attachment id, or -1 on failure. */
+    public int uploadFile(byte[] data, String contentType) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(BASE_URL + "/api/files"))
+                    .header("Content-Type", "application/octet-stream")
+                    .header("X-Content-Type", contentType == null ? "application/octet-stream" : contentType)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(data))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            return response.statusCode() == 200
+                    ? Integer.parseInt(response.body().trim())
+                    : -1;
+
+        } catch (Exception e) {
+            throw new RuntimeException("File upload failed", e);
+        }
+    }
+
+    public byte[] downloadFile(int id) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(BASE_URL + "/api/files/" + id))
+                    .GET()
+                    .build();
+
+            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+
+            return response.statusCode() == 200 ? response.body() : null;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private HttpResponse<String> send(String method, String path, Object body) {
         try {
             HttpRequest.BodyPublisher publisher = body == null

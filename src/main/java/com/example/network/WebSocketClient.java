@@ -78,6 +78,10 @@ public class WebSocketClient {
         sendMessage(XmlProtocol.clearChat(chatId, senderId));
     }
 
+    public void sendMessageRead(int chatId, int readerId) {
+        sendMessage(XmlProtocol.messageRead(chatId, readerId));
+    }
+
     public void sendSaveMessage(int chatId, int senderId, String text) {
         sendMessage(XmlProtocol.saveMessage(chatId, senderId, text));
     }

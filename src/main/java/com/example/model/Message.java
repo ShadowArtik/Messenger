@@ -1,5 +1,6 @@
 package com.example.model;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -13,6 +14,14 @@ public class Message {
     private final String senderDisplayName;
     private final String text;
     private final String time;
+
+    // Read status is the one mutable bit of a message: it flips to true once the
+    // recipient has read it (private chats only).
+    private boolean read;
+
+    // The day the message belongs to (used for date separators in the chat).
+    // Defaults to today for live messages; history overrides it with the stored date.
+    private LocalDate date = LocalDate.now(ZoneId.of("Europe/Kyiv"));
 
     public Message(String senderUsername, String text) {
         this(null, senderUsername, senderUsername, text);
@@ -70,6 +79,22 @@ public class Message {
 
     public String getFormattedTime() {
         return time;
+    }
+
+    public boolean isRead() {
+        return read;
+    }
+
+    public void setRead(boolean read) {
+        this.read = read;
+    }
+
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
     }
 
     public boolean isSystem() {

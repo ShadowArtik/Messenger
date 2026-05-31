@@ -24,6 +24,15 @@ public final class XmlProtocol {
                 """.formatted(chatId);
     }
 
+    public static String messageRead(int chatId, int readerId) {
+        return """
+                <message type="MESSAGE_READ">
+                    <chatId>%d</chatId>
+                    <senderId>%d</senderId>
+                </message>
+                """.formatted(chatId, readerId);
+    }
+
     public static String clearChat(int chatId, int senderId) {
         return """
                 <message type="CLEAR_CHAT">
@@ -256,6 +265,7 @@ public final class XmlProtocol {
         public boolean isGroupRenamed() { return "GROUP_RENAMED".equalsIgnoreCase(type); }
         public boolean isHistory() { return "HISTORY".equalsIgnoreCase(type); }
         public boolean isClearChat() { return "CLEAR_CHAT".equalsIgnoreCase(type); }
+        public boolean isMessagesRead() { return "MESSAGES_READ".equalsIgnoreCase(type); }
     }
 
     public static IncomingMessage parse(String xml) {
@@ -300,13 +310,25 @@ public final class XmlProtocol {
 
         for (int i = 0; i < msgNodes.getLength(); i++) {
             Element msg = (Element) msgNodes.item(i);
-            messages.add(new Message(
+            Message message = new Message(
                     getIntFromElement(msg, "senderId"),
                     getTextFromElement(msg, "senderUsername"),
                     getTextFromElement(msg, "senderDisplayName"),
                     getTextFromElement(msg, "text"),
                     getTextFromElement(msg, "time")
-            ));
+            );
+            message.setRead("true".equalsIgnoreCase(getTextFromElement(msg, "read")));
+
+            String dateText = getTextFromElement(msg, "date");
+            if (dateText != null && !dateText.isBlank()) {
+                try {
+                    message.setDate(java.time.LocalDate.parse(dateText.trim()));
+                } catch (Exception ignored) {
+                    // keep the default (today) if the server date is malformed
+                }
+            }
+
+            messages.add(message);
         }
 
         return messages;
