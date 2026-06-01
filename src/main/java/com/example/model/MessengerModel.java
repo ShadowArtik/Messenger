@@ -75,8 +75,6 @@ public class MessengerModel {
             return;
         }
 
-        // Loading appends in the server's activity order; a freshly created chat
-        // goes to the top so it shows up first for its creator.
         if (atTop) {
             chats.add(0, chat);
         } else {
@@ -318,7 +316,6 @@ public class MessengerModel {
         return true;
     }
 
-    /** Owner action: ask the server to delete the whole group for every member. */
     public void deleteGroupForAll(Chat chat) {
         if (chat == null || !chat.isGroup() || webSocketClient == null) {
             return;
@@ -327,7 +324,6 @@ public class MessengerModel {
         webSocketClient.sendDeleteGroup(chat.getId(), Session.getCurrentUser().getId());
     }
 
-    /** Remove a chat from memory only (the server already deleted it). */
     public void removeChatLocally(int chatId) {
         Chat chat = findChatById(chatId);
         if (chat != null) {
@@ -712,8 +708,6 @@ public class MessengerModel {
 
         Chat updatedChat = chat.withUnreadCount(0);
 
-        // Replacing the selected chat re-fires the ListView selection listener,
-        // which would re-enter openChat (with unread already 0). Suppress that.
         reordering = true;
         try {
             chats.set(index, updatedChat);

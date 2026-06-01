@@ -125,8 +125,6 @@ public class MessengerController {
     Chat selectedChat;
     WebSocketClient webSocketClient;
 
-    // Unread count captured when a chat is opened; applied once that chat's history
-    // loads, so we scroll to the first unread message instead of jumping to bottom.
     private int unreadOnOpen = 0;
     private int unreadOnOpenChatId = -1;
     private GroupHandler groupHandler;
@@ -284,10 +282,6 @@ public class MessengerController {
 
     }
 
-    /**
-     * After a chat's history finished loading, scroll to the first unread message
-     * (captured at open time), or to the bottom if there were none.
-     */
     void scrollAfterHistoryLoad(int chatId) {
         int messageCount = model.getMessagesForChat(selectedChat).size();
 
