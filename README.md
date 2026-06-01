@@ -1,116 +1,64 @@
-# Messenger — desktop client
+# Messenger
 
-A JavaFX desktop client for a real-time messenger: private & group chats, message
-editing/deletion, read receipts, image attachments and more. It is a **thin client** — it
-holds only in-memory UI state and talks to the backend over the network; it never touches the
-database directly.
+A desktop messenger built with Java — real-time private & group chat over a custom
+**XML-over-WebSocket** protocol. The project is **two independent applications** that talk only
+over the network:
 
-> Requires the backend to be running: **[MessengerServer](https://github.com/ShadowArtik/MessengerServer)**
-> (Spring Boot + PostgreSQL). The client communicates with it over REST (JSON) and
-> WebSocket (XML).
+| Folder | Module | Stack |
+|---|---|---|
+| [`client/`](client) | JavaFX desktop client — UI + in-memory state | Java 21, JavaFX 21 |
+| [`server/`](server) | Spring Boot backend — REST + WebSocket, owns the database | Java 21, Spring Boot 4 |
+
+The client is a **thin client**: no SQL, no DB password — everything goes through the server,
+which persists to PostgreSQL and routes all messages.
 
 ## Features
 
-- **Accounts** — registration and login (passwords are hashed with bcrypt **on the server**).
-- **Real-time messaging** — instant delivery over WebSocket.
-- **Private & group chats** — one-to-one and multi-member groups.
-- **Group roles** — owner / admin / member: add, kick, transfer ownership, rename, leave, and (owner) delete the whole group for everyone.
-- **Edit & delete messages** — change or remove your own messages; updates appear on every client instantly, with an *edited* mark.
-- **Read receipts** — ✓ sent, ✓✓ read (in groups, ✓✓ once anyone reads).
-- **Unread counters** — per-chat badges (server-computed, correct even after being offline).
-- **Online status & last seen**, **typing indicator** (auto-hides after ~2 s).
-- **Image attachments** — PNG / JPG / JPEG / GIF / BMP, rendered inline.
-- **Clear chat**, **date separators**, **chat search**, **profile editing**, **helper bot**.
-- **Dark UI** — custom theme built with JavaFX CSS.
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Java 21 |
-| GUI | JavaFX 21 (FXML + CSS) |
-| Server communication | `java.net.http` — REST client + WebSocket client |
-| JSON | Jackson 2.18.2 |
-| Realtime protocol | custom **XML** over WebSocket |
-| Build | Maven (`javafx-maven-plugin`) |
-| Tests | JUnit 5 |
-
-## Project Structure
-
-```
-Messenger/
-├── src/main/java/com/example/
-│   ├── Main.java                          # JavaFX entry point
-│   ├── controller/
-│   │   ├── LoginController.java           # login / register screen
-│   │   ├── MessengerController.java       # main screen coordinator (@FXML hub)
-│   │   ├── WebSocketMessageHandler.java   # handles incoming realtime frames
-│   │   ├── ChatActionsHandler.java        # send / edit / delete / clear / attach image
-│   │   ├── GroupHandler.java              # group create / members / roles
-│   │   ├── ProfileHandler.java            # current-user profile
-│   │   ├── ChatHeaderView.java            # renders the open chat's header
-│   │   └── TypingIndicators.java          # "is typing" header + chat-list previews
-│   ├── model/
-│   │   ├── MessengerModel.java            # in-memory UI state, reacts to server events
-│   │   ├── MessageStore.java              # per-chat message lists
-│   │   ├── PresenceTracker.java           # who is online
-│   │   └── Chat.java · Message.java · User.java · Session.java
-│   ├── network/
-│   │   ├── ServerApi.java                 # HTTP gateway to the REST API (JSON)
-│   │   ├── WebSocketClient.java           # realtime connection
-│   │   └── XmlProtocol.java               # build/parse realtime XML
-│   ├── repository/                        # REST clients (UserRepository, ChatRepository)
-│   ├── service/                           # UserService, GroupService, result DTOs
-│   └── view/                              # Avatars, LastSeen, ImageStore, MessengerCells, MessengerOverlays
-│   └── src/main/resources/
-│       ├── Login.fxml · chat-view.fxml
-│       └── style.css
-├── src/test/java/com/example/             # JUnit 5 unit tests
-└── pom.xml
-```
+- Accounts (registration / login, **bcrypt on the server**).
+- Real-time private & group chats with message history.
+- Group roles (owner / admin / member): add, kick, transfer ownership, rename, leave, delete group.
+- Edit & delete messages (broadcast to everyone, with an *edited* mark).
+- Read receipts (✓ / ✓✓), unread counters, online + last seen, typing indicator.
+- Image attachments (rendered inline), clear chat, date separators, chat search, helper bot.
+- Admin web dashboard at `/admin` (active sessions, conversations, history with image thumbnails).
 
 ## Quick Start
 
-1. **Start the backend first** — follow the README of
-   [MessengerServer](https://github.com/ShadowArtik/MessengerServer)
-   (`docker compose up -d` for PostgreSQL, then `./mvnw spring-boot:run`).
-   It listens on `ws://localhost:8080/ws/chat` and `http://localhost:8080/api`.
+### 1. Database + server (`server/`)
+```bash
+cd server
+docker compose up -d        # PostgreSQL 16 on localhost:5433
+./mvnw spring-boot:run      # server on http://localhost:8080
+```
+The server creates the schema (`schema.sql`) on startup.
+- WebSocket: `ws://localhost:8080/ws/chat` · REST: `http://localhost:8080/api` · Dashboard: `http://localhost:8080/admin`
 
-2. **Run the client:**
-   ```bash
-   mvn javafx:run
-   ```
-   Run it again in another terminal to open more windows / log in as different users.
+### 2. Client (`client/`)
+```bash
+cd client
+mvn javafx:run
+```
+Run it again in another terminal to open more windows / log in as different users.
 
 ## Tests
-
 ```bash
-mvn test
+cd client && mvn test                                          # 24 tests
+cd server && ./mvnw test -Dtest=XmlProtocolTest,PasswordHasherTest   # 8 tests
+```
+32 pure-logic unit tests — no database or running server required.
+
+## Architecture in one line
+
+```
+client (JavaFX)  ──REST (JSON, CRUD)──▶  server (Spring Boot)  ──▶  PostgreSQL
+                 ──WebSocket (XML, realtime)──▶  (routes & broadcasts to everyone)
 ```
 
-24 pure-logic unit tests — no server or database required:
-
-| Suite | Tests | Scope |
-|---|---|---|
-| `MessageTest` | 5 | system-prefix stripping, `clientId`, edited/read flags |
-| `ChatTest` | 5 | type flags, immutable "wither" methods |
-| `MessageStoreTest` | 6 | add / edit / delete / mark-read / clear |
-| `PresenceTrackerTest` | 3 | online / offline / online-users set |
-| `XmlProtocolTest` | 5 | build/parse round-trip, escaping, history |
-
-## Architecture
-
-The client is intentionally thin: **no SQL, no JDBC, no DB password**. All persistence and
-message routing happen on the server.
-
-- **REST (JSON)** — request/response CRUD: auth, chats, file upload/download.
-- **WebSocket (XML)** — realtime: messages, presence, typing, edits, group events.
-
-See the [MessengerServer](https://github.com/ShadowArtik/MessengerServer) README for the
-full message protocol and backend details.
+See [`client/README.md`](client/README.md) and [`server/README.md`](server/README.md) for the
+full code map, message protocol and details.
 
 ## Requirements
 
 - Java 21+
-- Maven 3.8+
-- A running [MessengerServer](https://github.com/ShadowArtik/MessengerServer) instance
+- Maven 3.8+ (the server bundles a wrapper: `./mvnw`)
+- PostgreSQL 14+ — or Docker, to run the bundled `server/docker-compose.yml`
