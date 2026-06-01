@@ -8,10 +8,8 @@ import com.example.model.User;
 import com.example.service.UserService;
 import com.example.network.WebSocketClient;
 import com.example.view.Avatars;
-import com.example.view.LastSeen;
 import com.example.view.MessengerCells;
 import com.example.view.MessengerOverlays;
-import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -19,7 +17,6 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -33,15 +30,11 @@ import javafx.scene.control.ScrollBar;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 public class MessengerController {
@@ -104,11 +97,11 @@ public class MessengerController {
     ListView<User> addMembersListView;
 
     @FXML ListView<Message> messagesListView;
-    @FXML private Label chatTitleLabel;
-    @FXML private Label chatSubtitleLabel;
-    @FXML private Label typingLabel;
+    @FXML Label chatTitleLabel;
+    @FXML Label chatSubtitleLabel;
+    @FXML Label typingLabel;
     @FXML private Label clearChatSearchLabel;
-    @FXML private StackPane chatAvatar;
+    @FXML StackPane chatAvatar;
     @FXML TextField messageTextField;
     @FXML private Button menuButton;
     @FXML private Button sendButton;
@@ -125,15 +118,16 @@ public class MessengerController {
     MessengerModel model;
     Chat selectedChat;
     WebSocketClient webSocketClient;
-    PauseTransition typingHideDelay;
     private GroupHandler groupHandler;
     private ChatActionsHandler chatActions;
     private ProfileHandler profileHandler;
+    final TypingIndicators typing = new TypingIndicators(this);
+    final ChatHeaderView chatHeader = new ChatHeaderView(this);
     final UserService userService = new UserService();
     private FilteredList<Chat> filteredChats;
-    private final Set<Integer> typingChatIds = new HashSet<>();
     final Set<Integer> selectedGroupMemberIds = new HashSet<>();
-    private final Map<Integer, PauseTransition> chatTypingHideDelays = new HashMap<>();
+
+    // =================== Setup ===================
 
     @FXML
     public void initialize() {
@@ -172,7 +166,7 @@ public class MessengerController {
         contactsListView.setCellFactory(listView -> MessengerCells.contactCell(
                 model::isBotChat,
                 model::isChatOnline,
-                this::isChatTyping
+                typing::isChatTyping
         ));
 
         messagesListView.setCellFactory(listView -> MessengerCells.messageCell(
@@ -183,8 +177,6 @@ public class MessengerController {
                 this::onDeleteMessage
         ));
 
-        // Messages are display-only: disable selection so left-clicking a message
-        // doesn't flash a selection/focus highlight.
         messagesListView.setSelectionModel(new NoSelectionModel<>());
         messagesListView.setFocusTraversable(false);
 
@@ -192,7 +184,7 @@ public class MessengerController {
 
         contactsListView.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> {
-                    if (newValue != null) {
+                    if (newValue != null && !model.isReordering()) {
                         selectedChat = newValue;
                         openChat(selectedChat);
                     }
@@ -232,13 +224,15 @@ public class MessengerController {
         profileHandler.setupCurrentUserProfile();
     }
 
+    // =================== Chat navigation ===================
+
     void openChat(Chat chat) {
         if (chat == null) {
             return;
         }
 
         chatActions.cancelEdit();
-        hideTypingLabel();
+        typing.hideHeaderLabel();
 
         int unreadCountBeforeOpen = chat.getUnreadCount();
 
@@ -296,7 +290,7 @@ public class MessengerController {
     }
 
     void showEmptyChatState() {
-        hideTypingLabel();
+        typing.hideHeaderLabel();
 
         selectedChat = null;
 
@@ -314,6 +308,8 @@ public class MessengerController {
         chatTitleLabel.setGraphic(null);
         chatAvatar.getChildren().clear();
     }
+
+    // =================== Search ===================
 
     private void filterChats(String text) {
         String searchText = text == null
@@ -381,25 +377,7 @@ public class MessengerController {
         }));
     }
 
-    void hideTypingLabel() {
-        if (typingHideDelay != null) {
-            typingHideDelay.stop();
-        }
-
-        if (typingLabel != null) {
-            typingLabel.setText("");
-            typingLabel.setVisible(false);
-            typingLabel.setManaged(true);
-        }
-    }
-
-    void showTypingLabel(String text) {
-        if (typingLabel != null) {
-            typingLabel.setText(text);
-            typingLabel.setVisible(true);
-            typingLabel.setManaged(true);
-        }
-    }
+    // =================== View helpers ===================
 
     void refreshContactList() {
         contactsListView.refresh();
@@ -430,70 +408,10 @@ public class MessengerController {
     }
 
     void updateChatHeader(Chat chat) {
-        String name = chat.getName();
-
-        chatTitleLabel.setText(name);
-        chatTitleLabel.setGraphic(null);
-        updateChatSubtitle(chat);
-
-        if (model.isBotChat(chat)) {
-            Label titleLabel = new Label(name);
-            titleLabel.setStyle(
-                    "-fx-text-fill: white;" +
-                            "-fx-font-size: 24;" +
-                            "-fx-font-weight: bold;"
-            );
-
-            HBox titleBox = new HBox(6, titleLabel, Avatars.botBadge());
-            titleBox.setAlignment(Pos.CENTER_LEFT);
-
-            chatTitleLabel.setText("");
-            chatTitleLabel.setGraphic(titleBox);
-        }
-
-        chatAvatar.getChildren().clear();
-        chatAvatar.getChildren().add(
-                Avatars.avatar(chat.getName(), 20, model.isChatOnline(chat))
-        );
+        chatHeader.update(chat);
     }
 
-    private void updateChatSubtitle(Chat chat) {
-        if (chatSubtitleLabel == null) {
-            return;
-        }
-
-        if (model.isGroupChat(chat)) {
-            int membersCount = model.getGroupMembers(chat).size();
-            String membersText = membersCount == 1
-                    ? "1 member"
-                    : membersCount + " members";
-
-            chatSubtitleLabel.setText(membersText);
-            chatSubtitleLabel.setVisible(true);
-            chatSubtitleLabel.setManaged(true);
-            return;
-        }
-
-        if (chat.isPrivate() && chat.getCompanionUserId() != null) {
-            chatSubtitleLabel.setText(companionPresence(chat.getCompanionUserId()));
-            chatSubtitleLabel.setVisible(true);
-            chatSubtitleLabel.setManaged(true);
-            return;
-        }
-
-        chatSubtitleLabel.setText("");
-        chatSubtitleLabel.setVisible(false);
-        chatSubtitleLabel.setManaged(false);
-    }
-
-    private String companionPresence(int companionUserId) {
-        if (model.isUserOnline(companionUserId)) {
-            return "online";
-        }
-
-        Long lastSeen = userService.getLastSeen(companionUserId);
-        return lastSeen == null ? "last seen recently" : LastSeen.format(lastSeen);
-    }
+    // =================== FXML actions ===================
 
     @FXML
     private void onEditProfileClick() { profileHandler.openProfile(); }
@@ -527,7 +445,6 @@ public class MessengerController {
         }
 
         if (clearChatItem != null) {
-            // Clearing wipes history for everyone, so in groups only owner/admin may do it.
             clearChatItem.setVisible(
                     !model.isGroupChat(selectedChat)
                             || model.canManageGroup(selectedChat)
@@ -614,7 +531,6 @@ public class MessengerController {
     @FXML
     private void onAttachClick() { chatActions.attachImage(); }
 
-    /** Selection model that never selects anything (messages list is display-only). */
     private static final class NoSelectionModel<T> extends MultipleSelectionModel<T> {
         @Override public ObservableList<Integer> getSelectedIndices() { return FXCollections.emptyObservableList(); }
         @Override public ObservableList<T> getSelectedItems() { return FXCollections.emptyObservableList(); }
@@ -637,7 +553,6 @@ public class MessengerController {
 
     private void onDeleteMessage(Message message) { chatActions.deleteMessage(message); }
 
-    /** Toggle the "editing a message" visual state on the composer. */
     void setComposerEditing(boolean editing) {
         if (editing) {
             if (!messageTextField.getStyleClass().contains("composer-editing")) {
@@ -650,45 +565,7 @@ public class MessengerController {
         }
     }
 
-
-    // =================== WebSocket handling → WebSocketMessageHandler ===================
-
-    private boolean isChatTyping(Chat chat) {
-        return chat != null && typingChatIds.contains(chat.getId());
-    }
-
-    void showChatListTyping(int chatId) {
-        typingChatIds.add(chatId);
-        contactsListView.refresh();
-
-        PauseTransition oldDelay = chatTypingHideDelays.remove(chatId);
-
-        if (oldDelay != null) {
-            oldDelay.stop();
-        }
-
-        PauseTransition delay = new PauseTransition(Duration.seconds(2));
-        delay.setOnFinished(event -> {
-            typingChatIds.remove(chatId);
-            chatTypingHideDelays.remove(chatId);
-            contactsListView.refresh();
-        });
-
-        chatTypingHideDelays.put(chatId, delay);
-        delay.playFromStart();
-    }
-
-    void hideChatListTyping(int chatId) {
-        typingChatIds.remove(chatId);
-
-        PauseTransition delay = chatTypingHideDelays.remove(chatId);
-
-        if (delay != null) {
-            delay.stop();
-        }
-
-        contactsListView.refresh();
-    }
+    // =================== Dialogs & menus ===================
 
     void showMessage(String title, String text) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -773,6 +650,8 @@ public class MessengerController {
 
     @FXML
     private void onConfirmLeaveGroupClick() { groupHandler.confirmLeaveGroup(); }
+
+    // =================== Session ===================
 
     @FXML
     private void onLogoutClick() {

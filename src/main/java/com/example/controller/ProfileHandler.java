@@ -5,12 +5,9 @@ import com.example.model.User;
 import com.example.view.Avatars;
 import com.example.view.MessengerOverlays;
 
-/**
- * Current-user profile: the sidebar card and the "edit display name" overlay,
- * extracted from {@link MessengerController}. The controller keeps thin @FXML
- * delegates that call into this handler.
- */
 public class ProfileHandler {
+
+    // =================== Profile ===================
 
     private final MessengerController c;
 

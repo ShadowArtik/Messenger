@@ -31,6 +31,8 @@ public class Chat {
         this.customName = customName;
     }
 
+    // =================== Accessors ===================
+
     public int getId() {
         return id;
     }
@@ -75,7 +77,7 @@ public class Chat {
         return "PRIVATE".equalsIgnoreCase(type);
     }
 
-    // Withers: return a copy with one aspect changed (Chat is immutable).
+    // =================== Withers ===================
 
     public Chat withName(String name, boolean customName) {
         return new Chat(id, name, type, lastMessageText, lastMessageTime, companionUserId, unreadCount, customName);

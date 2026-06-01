@@ -5,12 +5,9 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 
-/**
- * Builders for the circular initial-based avatars used across the UI.
- * Pure presentation: callers pass the online flag, this class knows nothing
- * about the model.
- */
 public final class Avatars {
+
+    // =================== Avatars ===================
 
     private Avatars() {
     }
@@ -26,7 +23,6 @@ public final class Avatars {
             "#9C88FF"
     };
 
-    /** Plain avatar with the first letter of {@code name}. */
     public static StackPane base(String name, double radius) {
         if (name == null || name.isBlank()) {
             name = "?";
@@ -55,7 +51,6 @@ public final class Avatars {
         return avatar;
     }
 
-    /** Avatar with an online dot scaled to the radius (chat list / header). */
     public static StackPane avatar(String name, double radius, boolean online) {
         StackPane avatar = base(name, radius);
 
@@ -66,7 +61,6 @@ public final class Avatars {
         return avatar;
     }
 
-    /** Member avatar (radius 17) with a fixed 10px online dot. */
     public static StackPane member(String name, boolean online) {
         StackPane avatar = base(name, 17);
 
@@ -77,7 +71,6 @@ public final class Avatars {
         return avatar;
     }
 
-    /** Small avatar shown next to incoming group messages. */
     public static StackPane smallMessage(String name) {
         return base(name, 15);
     }

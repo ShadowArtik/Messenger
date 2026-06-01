@@ -8,30 +8,23 @@ import java.util.UUID;
 
 public class Message {
 
+    // =================== State & accessors ===================
+
     private static final String SYSTEM_PREFIX = "[SYSTEM] ";
 
     private final Integer senderId;
     private final String senderUsername;
     private final String senderDisplayName;
 
-    // Text is mutable: editing a message rewrites it in place.
     private String text;
     private final String time;
 
-    // Client-generated id (UUID) that identifies this message across all clients
-    // and the server, so it can be referenced for edit/delete. May be null for
-    // legacy/system/bot messages that were never assigned one.
     private String clientId = UUID.randomUUID().toString();
 
-    // Flipped to true once the message text has been edited.
     private boolean edited;
 
-    // Read status is the one mutable bit of a message: it flips to true once the
-    // recipient has read it (private chats only).
     private boolean read;
 
-    // The day the message belongs to (used for date separators in the chat).
-    // Defaults to today for live messages; history overrides it with the stored date.
     private LocalDate date = LocalDate.now(ZoneId.of("Europe/Kyiv"));
 
     public Message(String senderUsername, String text) {

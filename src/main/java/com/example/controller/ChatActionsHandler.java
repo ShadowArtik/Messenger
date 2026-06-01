@@ -16,7 +16,6 @@ public class ChatActionsHandler {
 
     private final MessengerController c;
 
-    // Client id of the message currently being edited (null = composing a new one).
     private String editingClientId;
 
     public ChatActionsHandler(MessengerController controller) {
@@ -284,8 +283,6 @@ public class ChatActionsHandler {
         Chat chat = c.selectedChat;
         String clientId = editingClientId;
 
-        // The server applies the edit and broadcasts MESSAGE_EDITED back to everyone
-        // (including us), so the view updates through the same incoming-event path.
         c.webSocketClient.sendEditMessage(
                 chat.getId(),
                 Session.getCurrentUser().getId(),
@@ -306,13 +303,11 @@ public class ChatActionsHandler {
         String clientId = message.getClientId();
         Chat chat = c.selectedChat;
 
-        // If we were editing the message we just deleted, leave edit mode.
         if (clientId != null && clientId.equals(editingClientId)) {
             cancelEdit();
             c.messageTextField.clear();
         }
 
-        // Server deletes and broadcasts MESSAGE_DELETED to all members (us included).
         c.webSocketClient.sendDeleteMessage(
                 chat.getId(),
                 Session.getCurrentUser().getId(),

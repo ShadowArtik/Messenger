@@ -16,6 +16,8 @@ public final class XmlProtocol {
     private XmlProtocol() {
     }
 
+    // =================== Outgoing (XML builders) ===================
+
     public static String loadHistory(int chatId) {
         return """
                 <message type="LOAD_HISTORY">
@@ -229,6 +231,8 @@ public final class XmlProtocol {
         );
     }
 
+    // =================== Incoming (parsing) ===================
+
     public static class IncomingMessage {
 
         private String type;
@@ -365,7 +369,6 @@ public final class XmlProtocol {
                 try {
                     message.setDate(java.time.LocalDate.parse(dateText.trim()));
                 } catch (Exception ignored) {
-                    // keep the default (today) if the server date is malformed
                 }
             }
 
@@ -374,6 +377,8 @@ public final class XmlProtocol {
 
         return messages;
     }
+
+    // =================== XML helpers ===================
 
     private static String getTextFromElement(Element el, String tagName) {
         NodeList nodes = el.getElementsByTagName(tagName);

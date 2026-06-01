@@ -3,7 +3,6 @@
     -fx-focus-color: transparent;
     -fx-faint-focus-color: transparent;
 
-    /* Colour palette — reused everywhere via these looked-up colours. */
     -c-base: #1E1F22;       /* app background        */
     -c-panel: #2B2D31;      /* sidebar / lists / modals */
     -c-input: #383A40;      /* text inputs           */
@@ -150,8 +149,6 @@
     -fx-font-weight: bold;
 }
 
-/* Empty cells (the blank space below the last chat) must never highlight on
-   hover/selection. */
 .list-cell:empty,
 .list-cell:empty:hover,
 .list-cell:empty:selected,
@@ -174,8 +171,6 @@
     -fx-background-color: transparent;
 }
 
-/* Remove the focus ring modena draws around the list when it gains focus
-   (clicking anywhere in the chat, even empty space, otherwise flashes it). */
 .messages-list:focused {
     -fx-background-color: -c-panel;
     -fx-background-insets: 0;
@@ -280,7 +275,6 @@
     -fx-background-color: #4C8EF0;
 }
 
-/* Inherits colour/hover from .button; only the shape differs. */
 .send-button {
     -fx-background-radius: 22;
     -fx-padding: 10 20;
@@ -708,7 +702,6 @@
     -fx-background-color: -c-accent;
 }
 
-/* Shared shape for the small member-action buttons (colour set per variant). */
 .member-role-button,
 .member-kick-button {
     -fx-background-radius: 12;
@@ -723,13 +716,11 @@
 .member-kick-button { -fx-background-color: #4A2D35; }
 .member-kick-button:hover { -fx-background-color: #673743; }
 
-/* Inherits colour/hover from .button; only the shape differs. */
 .primary-button {
     -fx-background-radius: 18;
     -fx-padding: 9 18;
 }
 
-/* Grey variant of .button (text/weight inherited). */
 .secondary-button {
     -fx-background-color: #3A3D44;
     -fx-background-radius: 18;
@@ -785,7 +776,6 @@
     -fx-text-overrun: ellipsis;
 }
 
-/* Profile / logout pills share everything but their min width. */
 .profile-edit-button,
 .logout-button {
     -fx-background-color: -c-elevated;
@@ -829,14 +819,12 @@
 
 /* ===== Edit / delete a message ===== */
 
-/* Composer highlight while editing an existing message */
 .composer-editing {
     -fx-border-color: -c-indigo;
     -fx-border-width: 1.5;
     -fx-border-radius: 18;
 }
 
-/* Right-click menu on your own messages */
 .message-context-menu {
     -fx-background-color: -c-base;
     -fx-background-radius: 8;
@@ -859,7 +847,6 @@
     -fx-text-fill: white;
 }
 
-/* "edited" marker in a message bubble footer */
 .message-edited-label {
     -fx-text-fill: #B5BAC1;
     -fx-font-size: 10px;

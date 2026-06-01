@@ -37,6 +37,8 @@ public final class MessengerCells {
     private MessengerCells() {
     }
 
+    // =================== Contact cell ===================
+
     public static ListCell<Chat> contactCell(
             Predicate<Chat> isBot,
             Predicate<Chat> isOnline,
@@ -130,6 +132,8 @@ public final class MessengerCells {
             }
         };
     }
+
+    // =================== Message cell ===================
 
     public static ListCell<Message> messageCell(
             BooleanSupplier currentChatIsGroup,
@@ -268,10 +272,6 @@ public final class MessengerCells {
                     messageBox.getChildren().add(bubbleBox);
                 }
 
-                // Right-click menu to edit/delete your own messages (not in bot chats,
-                // not on system messages, and only when the message has a known id).
-                // Attached to the bubble itself — not the whole row — so right-clicking
-                // the empty space beside a message does nothing.
                 boolean canModify = isMine
                         && !message.isSystem()
                         && message.getClientId() != null
@@ -297,7 +297,6 @@ public final class MessengerCells {
                     });
                 }
 
-                // Never attach the menu to the whole list cell.
                 setContextMenu(null);
 
                 setText(null);
@@ -317,7 +316,8 @@ public final class MessengerCells {
         };
     }
 
-    /** Parse the attachment id from an "[IMG]42" message marker, or null if not an image. */
+    // =================== Helpers ===================
+
     private static Integer imageId(String text) {
         if (text == null || !text.startsWith("[IMG]")) {
             return null;
@@ -355,6 +355,8 @@ public final class MessengerCells {
 
         return date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH));
     }
+
+    // =================== Group member cells ===================
 
     public static ListCell<Chat> groupMemberSelectionCell(
             Set<Integer> selectedMemberIds

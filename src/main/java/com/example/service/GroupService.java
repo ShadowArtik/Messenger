@@ -8,15 +8,12 @@ import com.example.repository.UserRepository;
 
 import java.util.List;
 
-/**
- * Group membership and role logic. Stateless: reads/writes go through the
- * repositories (server REST) and the current {@link Session}; it does not hold
- * any UI state, so it is independent of {@link com.example.model.MessengerModel}.
- */
 public class GroupService {
 
     private final ChatRepository chatRepository = new ChatRepository();
     private final UserRepository userRepository = new UserRepository();
+
+    // =================== Members ===================
 
     public List<Integer> getGroupReceiverIds(Chat chat) {
         if (chat == null || !chat.isGroup()) {
@@ -48,6 +45,8 @@ public class GroupService {
         );
     }
 
+    // =================== Permissions ===================
+
     public boolean canManageGroup(Chat chat) {
         String role = getCurrentUserGroupRole(chat);
         return "OWNER".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role);
@@ -73,6 +72,8 @@ public class GroupService {
                 && member.getId() != Session.getCurrentUser().getId()
                 && !"OWNER".equalsIgnoreCase(member.getMemberRole());
     }
+
+    // =================== Mutations ===================
 
     public boolean transferOwnership(Chat chat, User member) {
         if (!canTransferOwnership(chat, member)) {

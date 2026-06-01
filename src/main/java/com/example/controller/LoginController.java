@@ -26,6 +26,8 @@ public class LoginController {
     private final UserService userService = new UserService();
 
     @FXML
+    // =================== Forms ===================
+
     private void showLoginForm() {
         loginBox.setVisible(true);
         loginBox.setManaged(true);
@@ -44,6 +46,8 @@ public class LoginController {
     }
 
     @FXML
+    // =================== Actions ===================
+
     private void onLoginClick() {
         String username = loginUsernameField.getText().trim();
         String password = loginPasswordField.getText().trim();
@@ -103,6 +107,8 @@ public class LoginController {
             );
         }
     }
+
+    // =================== Helpers ===================
 
     private void openMessenger() {
         try {

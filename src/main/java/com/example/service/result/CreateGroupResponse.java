@@ -6,6 +6,8 @@ import java.util.List;
 
 public class CreateGroupResponse {
 
+    // =================== Result ===================
+
     public enum Result {
         SUCCESS,
         EMPTY_GROUP_NAME,

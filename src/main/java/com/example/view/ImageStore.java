@@ -7,11 +7,9 @@ import java.io.ByteArrayInputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Downloads and caches chat image attachments by id, so the message list does
- * not re-fetch the same image on every cell re-render.
- */
 public final class ImageStore {
+
+    // =================== Cache ===================
 
     private ImageStore() {
     }
@@ -19,7 +17,6 @@ public final class ImageStore {
     private static final ServerApi API = new ServerApi();
     private static final Map<Integer, Image> CACHE = new ConcurrentHashMap<>();
 
-    /** @return the cached image for this attachment id, or {@code null} if it cannot be loaded. */
     public static Image get(int attachmentId) {
         Image cached = CACHE.get(attachmentId);
         if (cached != null) {

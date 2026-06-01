@@ -19,6 +19,8 @@ public class WebSocketClient {
         this.messageHandler = messageHandler;
     }
 
+    // =================== Connection ===================
+
     public void connect(int userId, String username, String displayName) {
         HttpClient client = HttpClient.newHttpClient();
 
@@ -44,8 +46,6 @@ public class WebSocketClient {
                                     CharSequence data,
                                     boolean last
                             ) {
-                                // The JDK WebSocket may split a single server message across
-                                // several onText calls; accumulate until 'last' before parsing.
                                 messageBuffer.append(data);
 
                                 if (last) {
@@ -69,6 +69,8 @@ public class WebSocketClient {
                         }
                 );
     }
+
+    // =================== Senders ===================
 
     public void sendLoadHistory(int chatId) {
         sendMessage(XmlProtocol.loadHistory(chatId));
@@ -194,6 +196,8 @@ public class WebSocketClient {
                 systemMessageText
         ));
     }
+
+    // =================== Low-level send ===================
 
     public void sendMessage(String text) {
         if (webSocket == null) {

@@ -9,13 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Client-side gateway for the user domain. All data access goes through the
- * MessengerServer REST API; the client no longer talks to PostgreSQL directly.
- */
 public class UserRepository {
 
     private final ServerApi api = new ServerApi();
+
+    // =================== Users ===================
 
     public User findByUsername(String username) {
         HttpResponse<String> response = api.get("/api/users/by-username/" + ServerApi.encode(username));
@@ -40,9 +38,6 @@ public class UserRepository {
         return toUser(api.readTree(response.body()));
     }
 
-    /**
-     * @return the created user, or {@code null} if the username is already taken.
-     */
     public User register(String username, String displayName, String password) {
         HttpResponse<String> response = api.post(
                 "/api/users/register",
@@ -106,7 +101,6 @@ public class UserRepository {
         return users;
     }
 
-    /** @return companion's last-seen time as epoch millis, or {@code null} if unknown. */
     public Long getLastSeen(int userId) {
         HttpResponse<String> response = api.get("/api/users/" + userId + "/last-seen");
 
@@ -120,6 +114,8 @@ public class UserRepository {
             return null;
         }
     }
+
+    // =================== Helpers ===================
 
     private User toUser(JsonNode node) {
         if (node == null || node.isNull()) {

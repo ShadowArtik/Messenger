@@ -10,29 +10,25 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class MessengerModel {
 
     private final ObservableList<Chat> chats;
-    private final Map<Integer, ObservableList<Message>> chatMessages;
+    private final MessageStore messageStore = new MessageStore();
+
+    private boolean reordering = false;
 
     private WebSocketClient webSocketClient;
     private final ChatRepository chatRepository;
     private final UserService userService;
     private final GroupService groupService;
-    private final Set<Integer> onlineUserIds;
+    private final PresenceTracker presence = new PresenceTracker();
 
     private User helperBotUser;
 
     public MessengerModel() {
         chats = FXCollections.observableArrayList();
-        chatMessages = new HashMap<>();
-        onlineUserIds = new HashSet<>();
 
         chatRepository = new ChatRepository();
         userService = new UserService();
@@ -71,12 +67,12 @@ public class MessengerModel {
     }
 
     private void addChatToMemory(Chat chat) {
-        if (chat == null || chatMessages.containsKey(chat.getId())) {
+        if (chat == null || messageStore.has(chat.getId())) {
             return;
         }
 
         chats.add(chat);
-        chatMessages.put(chat.getId(), FXCollections.observableArrayList());
+        messageStore.ensure(chat.getId());
     }
 
     public CreateChatResponse addChat(String username) {
@@ -292,7 +288,7 @@ public class MessengerModel {
         }
 
         chats.remove(chat);
-        chatMessages.remove(chat.getId());
+        messageStore.remove(chat.getId());
 
         chatRepository.deleteChatForUser(
                 chat.getId(),
@@ -307,7 +303,7 @@ public class MessengerModel {
 
         chatRepository.leaveGroup(chat.getId(), Session.getCurrentUser().getId());
         chats.remove(chat);
-        chatMessages.remove(chat.getId());
+        messageStore.remove(chat.getId());
         return true;
     }
 
@@ -316,13 +312,7 @@ public class MessengerModel {
             return null;
         }
 
-        ObservableList<Message> messages = chatMessages.get(chat.getId());
-
-        if (messages != null) {
-            messages.clear();
-        } else {
-            chatMessages.put(chat.getId(), FXCollections.observableArrayList());
-        }
+        messageStore.clear(chat.getId());
 
         if (webSocketClient != null) {
             webSocketClient.sendClearChat(chat.getId(), Session.getCurrentUser().getId());
@@ -346,10 +336,7 @@ public class MessengerModel {
             return null;
         }
 
-        ObservableList<Message> messages = chatMessages.get(chatId);
-        if (messages != null) {
-            messages.clear();
-        }
+        messageStore.clear(chatId);
 
         int index = chats.indexOf(chat);
         Chat updatedChat = chat.withLastMessage(null, null).withUnreadCount(0);
@@ -361,98 +348,42 @@ public class MessengerModel {
         return updatedChat;
     }
 
-    /**
-     * Mark the current user's own messages in a chat as read (incoming MESSAGES_READ).
-     * @return true if any message changed (so the view needs a refresh).
-     */
     public boolean markOutgoingMessagesRead(int chatId) {
-        ObservableList<Message> messages = chatMessages.get(chatId);
-
-        if (messages == null || Session.getCurrentUser() == null) {
+        if (Session.getCurrentUser() == null) {
             return false;
         }
 
-        int currentUserId = Session.getCurrentUser().getId();
-        boolean changed = false;
-
-        for (Message message : messages) {
-            if (message.getSenderId() != null
-                    && message.getSenderId() == currentUserId
-                    && !message.isRead()) {
-                message.setRead(true);
-                changed = true;
-            }
-        }
-
-        return changed;
+        return messageStore.markOutgoingRead(chatId, Session.getCurrentUser().getId());
     }
 
-    /**
-     * Remove a message (by its client id) from a chat's in-memory list and refresh
-     * the chat-list preview if the deleted message was the last one.
-     * @return true if a message was removed.
-     */
     public boolean deleteMessageLocal(int chatId, String clientId) {
         if (clientId == null) {
             return false;
         }
 
-        ObservableList<Message> messages = chatMessages.get(chatId);
-
-        if (messages == null) {
-            return false;
-        }
-
-        boolean removed = messages.removeIf(m -> clientId.equals(m.getClientId()));
+        boolean removed = messageStore.deleteByClientId(chatId, clientId);
 
         if (removed) {
-            refreshChatPreview(chatId, messages);
+            refreshChatPreview(chatId);
         }
 
         return removed;
     }
 
-    /**
-     * Replace the text of a message (by its client id) and mark it as edited.
-     * @return true if a message was found and changed.
-     */
     public boolean editMessageLocal(int chatId, String clientId, String newText) {
         if (clientId == null || newText == null) {
             return false;
         }
 
-        ObservableList<Message> messages = chatMessages.get(chatId);
+        boolean changed = messageStore.editByClientId(chatId, clientId, newText);
 
-        if (messages == null) {
-            return false;
+        if (changed) {
+            refreshChatPreview(chatId);
         }
 
-        for (int i = 0; i < messages.size(); i++) {
-            Message message = messages.get(i);
-
-            if (clientId.equals(message.getClientId())) {
-                message.setText(newText);
-                message.setEdited(true);
-
-                // Re-set the element so the ObservableList fires a change event and
-                // the cell is guaranteed to re-render (in-place mutation alone is not
-                // always picked up by the ListView on the editing client).
-                messages.set(i, message);
-
-                refreshChatPreview(chatId, messages);
-                return true;
-            }
-        }
-
-        return false;
+        return changed;
     }
 
-    /**
-     * Refresh only the chat-list preview (last message text/time) of one chat from
-     * the server. Used when an edit/delete arrives for a chat whose messages aren't
-     * loaded in memory (it was never opened), so the preview can't be recomputed
-     * locally from the message list.
-     */
     public void refreshChatPreviewFromServer(int chatId) {
         if (Session.getCurrentUser() == null) {
             return;
@@ -483,8 +414,7 @@ public class MessengerModel {
         }
     }
 
-    /** Sync a chat's last-message preview to the current tail of its message list. */
-    private void refreshChatPreview(int chatId, ObservableList<Message> messages) {
+    private void refreshChatPreview(int chatId) {
         Chat chat = findChatById(chatId);
 
         if (chat == null) {
@@ -497,7 +427,7 @@ public class MessengerModel {
             return;
         }
 
-        Message last = messages.isEmpty() ? null : messages.get(messages.size() - 1);
+        Message last = messageStore.last(chatId);
 
         Chat updatedChat = last == null
                 ? chat.withLastMessage(null, null)
@@ -511,12 +441,7 @@ public class MessengerModel {
     }
 
     public void setMessagesForChat(int chatId, List<Message> messages) {
-        ObservableList<Message> list = chatMessages.get(chatId);
-        if (list == null) {
-            list = FXCollections.observableArrayList();
-            chatMessages.put(chatId, list);
-        }
-        list.setAll(messages != null ? messages : List.of());
+        messageStore.setMessages(chatId, messages);
     }
 
     public ObservableList<Chat> getChats() {
@@ -528,13 +453,7 @@ public class MessengerModel {
             return FXCollections.observableArrayList();
         }
 
-        ObservableList<Message> messages = chatMessages.get(chat.getId());
-
-        if (messages == null) {
-            return FXCollections.observableArrayList();
-        }
-
-        return messages;
+        return messageStore.getOrEmpty(chat.getId());
     }
 
     // =================== Messages ===================
@@ -544,9 +463,7 @@ public class MessengerModel {
             return null;
         }
 
-        ObservableList<Message> messages = chatMessages.get(chat.getId());
-
-        if (messages == null) {
+        if (!messageStore.has(chat.getId())) {
             return null;
         }
 
@@ -557,7 +474,7 @@ public class MessengerModel {
             );
         }
 
-        messages.add(message);
+        messageStore.add(chat.getId(), message);
 
         if (chat.isBot() && webSocketClient != null && message.getSenderId() != null) {
             webSocketClient.sendSaveMessage(
@@ -579,13 +496,11 @@ public class MessengerModel {
             return null;
         }
 
-        ObservableList<Message> messages = chatMessages.get(chat.getId());
-
-        if (messages == null) {
+        if (!messageStore.has(chat.getId())) {
             return null;
         }
 
-        messages.add(message);
+        messageStore.add(chat.getId(), message);
 
         if (webSocketClient != null) {
             webSocketClient.sendSaveMessage(chat.getId(), helperBotUser.getId(), message.getStorageText());
@@ -604,16 +519,9 @@ public class MessengerModel {
             return null;
         }
 
-        ObservableList<Message> messages = chatMessages.get(chat.getId());
-
-        if (messages == null) {
-            messages = FXCollections.observableArrayList();
-            chatMessages.put(chat.getId(), messages);
-        }
-
         Message message = Message.system(text);
 
-        messages.add(message);
+        messageStore.add(chat.getId(), message);
 
         return updateChatAfterNewMessage(
                 chat,
@@ -639,10 +547,19 @@ public class MessengerModel {
 
         Chat updatedChat = chat.withLastMessage(lastMessageText, lastMessageTime);
 
-        chats.remove(index);
-        chats.add(0, updatedChat);
+        reordering = true;
+        try {
+            chats.remove(index);
+            chats.add(0, updatedChat);
+        } finally {
+            reordering = false;
+        }
 
         return updatedChat;
+    }
+
+    public boolean isReordering() {
+        return reordering;
     }
 
     public Message generateBotResponse(String userText) {
@@ -674,14 +591,7 @@ public class MessengerModel {
             return null;
         }
 
-        ObservableList<Message> messages = chatMessages.get(chat.getId());
-
-        if (messages == null) {
-            messages = FXCollections.observableArrayList();
-            chatMessages.put(chat.getId(), messages);
-        }
-
-        messages.add(message);
+        messageStore.add(chat.getId(), message);
 
         return updateChatAfterNewMessage(
                 chat,
@@ -692,36 +602,26 @@ public class MessengerModel {
 
     public void reloadChats() {
         chats.clear();
-        chatMessages.clear();
+        messageStore.clearAll();
         loadChats();
     }
 
     // =================== Online presence ===================
 
     public void setUserOnline(int userId) {
-        onlineUserIds.add(userId);
+        presence.setUserOnline(userId);
     }
 
     public void setOnlineUsers(List<Integer> userIds, int currentUserId) {
-        onlineUserIds.clear();
-
-        if (userIds == null) {
-            return;
-        }
-
-        for (Integer userId : userIds) {
-            if (userId != null && userId != currentUserId) {
-                onlineUserIds.add(userId);
-            }
-        }
+        presence.setOnlineUsers(userIds, currentUserId);
     }
 
     public void setUserOffline(int userId) {
-        onlineUserIds.remove(userId);
+        presence.setUserOffline(userId);
     }
 
     public boolean isUserOnline(Integer userId) {
-        return userId != null && onlineUserIds.contains(userId);
+        return presence.isUserOnline(userId);
     }
 
     // =================== Chat list updates ===================

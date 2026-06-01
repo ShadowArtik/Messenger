@@ -5,8 +5,6 @@ import com.example.model.Message;
 import com.example.model.Session;
 import com.example.network.XmlProtocol;
 import com.example.network.XmlProtocol.IncomingMessage;
-import javafx.animation.PauseTransition;
-import javafx.util.Duration;
 
 public class WebSocketMessageHandler {
 
@@ -15,6 +13,8 @@ public class WebSocketMessageHandler {
     public WebSocketMessageHandler(MessengerController controller) {
         this.controller = controller;
     }
+
+    // =================== Dispatch ===================
 
     public void handle(String xml) {
         try {
@@ -98,6 +98,8 @@ public class WebSocketMessageHandler {
         }
     }
 
+    // =================== Presence ===================
+
     private void handleOnlineUsersMessage(IncomingMessage incoming) {
         controller.model.setOnlineUsers(
                 incoming.getUserIds(),
@@ -137,14 +139,16 @@ public class WebSocketMessageHandler {
         }
     }
 
+    // =================== Chat messages ===================
+
     private void handleChatMessage(IncomingMessage incoming) {
         int chatId = incoming.getChatId();
         int senderId = incoming.getSenderId();
 
-        controller.hideChatListTyping(chatId);
+        controller.typing.hideChatListTyping(chatId);
 
         if (controller.selectedChat != null && controller.selectedChat.getId() == chatId) {
-            controller.hideTypingLabel();
+            controller.typing.hideHeaderLabel();
         }
 
         int previouslySelectedChatId =
@@ -174,8 +178,6 @@ public class WebSocketMessageHandler {
                     incoming.getText()
             );
 
-            // Keep the same client id the sender generated, so edit/delete of this
-            // message resolves to the same row on every client.
             if (incoming.getMsgId() != null && !incoming.getMsgId().isBlank()) {
                 incomingMessage.setClientId(incoming.getMsgId());
             }
@@ -225,6 +227,8 @@ public class WebSocketMessageHandler {
         }
     }
 
+    // =================== Profile ===================
+
     private void handleUserProfileUpdated(IncomingMessage incoming) {
         if (incoming.getUserId() == Session.getCurrentUser().getId()) {
             return;
@@ -259,6 +263,8 @@ public class WebSocketMessageHandler {
         controller.updateChatHeader(updatedSelectedChat);
         controller.showMessagesForCurrentChat();
     }
+
+    // =================== Groups ===================
 
     private void handleGroupCreatedMessage(IncomingMessage incoming) {
         if (incoming.getMemberIds() == null) {
@@ -412,6 +418,8 @@ public class WebSocketMessageHandler {
         controller.refreshContactList();
     }
 
+    // =================== Read receipts ===================
+
     private void handleMessagesRead(IncomingMessage incoming) {
         int chatId = incoming.getChatId();
 
@@ -424,13 +432,14 @@ public class WebSocketMessageHandler {
         }
     }
 
+    // =================== Edit / delete ===================
+
     private void handleMessageDeleted(IncomingMessage incoming) {
         int chatId = incoming.getChatId();
 
         boolean changed = controller.model.deleteMessageLocal(chatId, incoming.getMsgId());
 
         if (!changed) {
-            // Chat not loaded in memory — refresh its preview straight from the server.
             controller.model.refreshChatPreviewFromServer(chatId);
         }
 
@@ -463,6 +472,8 @@ public class WebSocketMessageHandler {
         }
     }
 
+    // =================== Clear & history ===================
+
     private void handleClearChat(IncomingMessage incoming) {
         int chatId = incoming.getChatId();
 
@@ -492,32 +503,26 @@ public class WebSocketMessageHandler {
         }
     }
 
+    // =================== Typing ===================
+
     private void handleTypingMessage(IncomingMessage incoming) {
         if (incoming.getSenderId() == Session.getCurrentUser().getId()) {
             return;
         }
 
-        controller.showChatListTyping(incoming.getChatId());
+        controller.typing.showChatListTyping(incoming.getChatId());
 
         if (controller.selectedChat == null
                 || controller.selectedChat.getId() != incoming.getChatId()) {
             return;
         }
 
-        if (controller.model.isGroupChat(controller.selectedChat)
+        String text = controller.model.isGroupChat(controller.selectedChat)
                 && incoming.getSenderDisplayName() != null
-                && !incoming.getSenderDisplayName().isBlank()) {
-            controller.showTypingLabel(incoming.getSenderDisplayName() + " is typing...");
-        } else {
-            controller.showTypingLabel("typing...");
-        }
+                && !incoming.getSenderDisplayName().isBlank()
+                ? incoming.getSenderDisplayName() + " is typing..."
+                : "typing...";
 
-        if (controller.typingHideDelay != null) {
-            controller.typingHideDelay.stop();
-        }
-
-        controller.typingHideDelay = new PauseTransition(Duration.seconds(2));
-        controller.typingHideDelay.setOnFinished(event -> controller.hideTypingLabel());
-        controller.typingHideDelay.playFromStart();
+        controller.typing.showHeaderLabelWithTimeout(text);
     }
 }

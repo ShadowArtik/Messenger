@@ -2,6 +2,8 @@ package com.example.model;
 
 public class User {
 
+    // =================== Fields & accessors ===================
+
     private final int id;
     private final String username;
     private final String displayName;

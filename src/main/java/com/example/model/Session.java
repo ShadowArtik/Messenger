@@ -2,6 +2,8 @@ package com.example.model;
 
 public class Session {
 
+    // =================== Current user ===================
+
     private static User currentUser;
 
     public static User getCurrentUser() {

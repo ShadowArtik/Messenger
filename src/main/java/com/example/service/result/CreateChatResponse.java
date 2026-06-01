@@ -4,6 +4,8 @@ import com.example.model.Chat;
 
 public class CreateChatResponse {
 
+    // =================== Result ===================
+
     public enum Result {
         SUCCESS,
         USER_NOT_FOUND,

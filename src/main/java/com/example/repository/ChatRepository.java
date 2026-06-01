@@ -10,10 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Client-side gateway for the chat domain. All data access goes through the
- * MessengerServer REST API; the client no longer talks to PostgreSQL directly.
- */
 public class ChatRepository {
 
     private final ServerApi api = new ServerApi();

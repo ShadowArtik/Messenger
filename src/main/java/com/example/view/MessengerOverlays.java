@@ -16,6 +16,8 @@ public final class MessengerOverlays {
     private MessengerOverlays() {
     }
 
+    // =================== Generic show/hide ===================
+
     public static void show(StackPane overlay) {
         if (overlay == null) {
             return;
@@ -40,6 +42,8 @@ public final class MessengerOverlays {
             hide(overlay);
         }
     }
+
+    // =================== Specific overlays ===================
 
     public static void showCreateChat(
             StackPane overlay,
@@ -106,6 +110,8 @@ public final class MessengerOverlays {
             displayNameField.positionCaret(displayNameField.getText().length());
         });
     }
+
+    // =================== Errors ===================
 
     public static void showError(Label errorLabel, String message) {
         errorLabel.setText(message);

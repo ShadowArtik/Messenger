@@ -5,6 +5,8 @@ import com.example.repository.UserRepository;
 
 public class UserService {
 
+    // =================== API ===================
+
     public enum RegisterResult {
         SUCCESS,
         INVALID_USERNAME,

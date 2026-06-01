@@ -6,10 +6,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Formats a user's last-seen time into a Telegram-style subtitle string.
- */
 public final class LastSeen {
+
+    // =================== Formatting ===================
 
     private LastSeen() {
     }

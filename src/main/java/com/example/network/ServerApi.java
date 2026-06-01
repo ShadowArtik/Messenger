@@ -11,10 +11,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Thin HTTP gateway to the MessengerServer REST API.
- * All request/response bodies are JSON; the realtime XML protocol stays on the WebSocket layer.
- */
 public class ServerApi {
 
     private static final String BASE_URL = "http://localhost:8080";
@@ -22,6 +18,8 @@ public class ServerApi {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    // =================== HTTP verbs ===================
 
     public HttpResponse<String> get(String path) {
         return send("GET", path, null);
@@ -39,7 +37,8 @@ public class ServerApi {
         return send("DELETE", path, null);
     }
 
-    /** Upload raw bytes; returns the created attachment id, or -1 on failure. */
+    // =================== Files ===================
+
     public int uploadFile(byte[] data, String contentType) {
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(BASE_URL + "/api/files"))
@@ -73,6 +72,8 @@ public class ServerApi {
             return null;
         }
     }
+
+    // =================== Internals ===================
 
     private HttpResponse<String> send(String method, String path, Object body) {
         try {

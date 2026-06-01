@@ -190,10 +190,6 @@ public class GroupHandler {
         List<Integer> newMemberIds = selectedUsers.stream().map(User::getId).toList();
         String joinedText = buildMembersJoinedText(selectedUsers);
 
-        // Notify other clients and let the server persist the system message FIRST,
-        // so the inviter's own history reload (triggered by addSystemMessage below)
-        // already contains it. Otherwise LOAD_HISTORY races ahead of the save and
-        // the inviter never sees the "joined the group" message.
         c.webSocketClient.sendGroupCreatedMessage(
                 Session.getCurrentUser().getId(),
                 c.selectedChat.getId(),
