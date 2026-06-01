@@ -76,7 +76,9 @@ public class ChatRepository {
     // =================== Membership ===================
 
     public void deleteChatForUser(int chatId, int userId) {
-        removeMember(chatId, userId);
+        // Soft-hide (keep membership) so the other side is not orphaned and the
+        // chat can be reused if re-added; group leave/kick still hard-remove.
+        api.delete("/api/chats/" + chatId + "/me?userId=" + userId);
     }
 
     public void leaveGroup(int chatId, int userId) {

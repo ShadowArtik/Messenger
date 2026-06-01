@@ -242,7 +242,8 @@
                     <HBox alignment="CENTER_RIGHT"
                           spacing="10">
 
-                        <Button text="Reset to profile name"
+                        <Button fx:id="resetChatNameButton"
+                                text="Reset to profile name"
                                 onAction="#onResetRenameChatClick"
                                 styleClass="secondary-button"/>
 
@@ -442,10 +443,12 @@
                       styleClass="create-chat-dialog"
                       onMouseClicked="#onModalWindowClick">
 
-                    <Label text="Delete chat"
+                    <Label fx:id="deleteChatTitleLabel"
+                           text="Delete chat"
                            styleClass="dialog-title"/>
 
-                    <Label text="This chat will be removed from your chat list."
+                    <Label fx:id="deleteChatSubtitleLabel"
+                           text="This chat will be removed from your chat list."
                            styleClass="dialog-subtitle"/>
 
                     <Label text="This action cannot be undone."

@@ -54,7 +54,13 @@ public class MessengerController {
     @FXML
     Label renameChatErrorLabel;
     @FXML
+    Button resetChatNameButton;
+    @FXML
     private StackPane deleteChatOverlay;
+    @FXML
+    private Label deleteChatTitleLabel;
+    @FXML
+    private Label deleteChatSubtitleLabel;
     @FXML
     private StackPane clearChatOverlay;
     @FXML
@@ -118,6 +124,11 @@ public class MessengerController {
     MessengerModel model;
     Chat selectedChat;
     WebSocketClient webSocketClient;
+
+    // Unread count captured when a chat is opened; applied once that chat's history
+    // loads, so we scroll to the first unread message instead of jumping to bottom.
+    private int unreadOnOpen = 0;
+    private int unreadOnOpenChatId = -1;
     private GroupHandler groupHandler;
     private ChatActionsHandler chatActions;
     private ProfileHandler profileHandler;
@@ -234,7 +245,10 @@ public class MessengerController {
         chatActions.cancelEdit();
         typing.hideHeaderLabel();
 
-        int unreadCountBeforeOpen = chat.getUnreadCount();
+        // Remember how many were unread; the scroll is applied when LOAD_HISTORY
+        // arrives (messages are not loaded yet at this point).
+        unreadOnOpen = chat.getUnreadCount();
+        unreadOnOpenChatId = chat.getId();
 
         Chat updatedChat = model.resetUnreadCount(chat);
 
@@ -268,25 +282,27 @@ public class MessengerController {
             );
         }
 
+    }
+
+    /**
+     * After a chat's history finished loading, scroll to the first unread message
+     * (captured at open time), or to the bottom if there were none.
+     */
+    void scrollAfterHistoryLoad(int chatId) {
         int messageCount = model.getMessagesForChat(selectedChat).size();
 
         if (messageCount == 0) {
             return;
         }
 
-        int scrollIndex;
-
-        if (unreadCountBeforeOpen > 0) {
-            scrollIndex = messageCount - unreadCountBeforeOpen;
-
-            if (scrollIndex < 0) {
-                scrollIndex = 0;
-            }
-
-            scrollMessagesTo(scrollIndex);
+        if (unreadOnOpenChatId == chatId && unreadOnOpen > 0) {
+            scrollMessagesTo(Math.max(0, messageCount - unreadOnOpen));
         } else {
             scrollMessagesToBottom();
         }
+
+        unreadOnOpenChatId = -1;
+        unreadOnOpen = 0;
     }
 
     void showEmptyChatState() {
@@ -341,9 +357,12 @@ public class MessengerController {
     }
 
     private void scrollMessagesTo(int index) {
-        Platform.runLater(() -> Platform.runLater(
-                () -> messagesListView.scrollTo(index)
-        ));
+        Platform.runLater(() -> Platform.runLater(() -> {
+            messagesListView.scrollTo(index);
+            messagesListView.applyCss();
+            messagesListView.layout();
+            Platform.runLater(() -> messagesListView.scrollTo(index));
+        }));
     }
 
     void scrollMessagesToBottom() {
@@ -434,7 +453,10 @@ public class MessengerController {
         }
 
         if (deleteChatItem != null) {
-            deleteChatItem.setVisible(!model.isGroupChat(selectedChat));
+            boolean isGroup = model.isGroupChat(selectedChat);
+            boolean showDelete = !isGroup || model.groupService().isGroupOwner(selectedChat);
+            deleteChatItem.setVisible(showDelete);
+            deleteChatItem.setText(isGroup ? "Delete group" : "Delete chat");
         }
 
         if (renameChatItem != null) {
@@ -489,6 +511,14 @@ public class MessengerController {
 
         if (selectedChat == null) {
             return;
+        }
+
+        if (model.isGroupChat(selectedChat)) {
+            deleteChatTitleLabel.setText("Delete group");
+            deleteChatSubtitleLabel.setText("The group will be deleted for everyone.");
+        } else {
+            deleteChatTitleLabel.setText("Delete chat");
+            deleteChatSubtitleLabel.setText("This chat will be removed from your chat list.");
         }
 
         MessengerOverlays.show(deleteChatOverlay);

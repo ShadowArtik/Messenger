@@ -67,11 +67,22 @@ public class MessengerModel {
     }
 
     private void addChatToMemory(Chat chat) {
+        addChatToMemory(chat, false);
+    }
+
+    private void addChatToMemory(Chat chat, boolean atTop) {
         if (chat == null || messageStore.has(chat.getId())) {
             return;
         }
 
-        chats.add(chat);
+        // Loading appends in the server's activity order; a freshly created chat
+        // goes to the top so it shows up first for its creator.
+        if (atTop) {
+            chats.add(0, chat);
+        } else {
+            chats.add(chat);
+        }
+
         messageStore.ensure(chat.getId());
     }
 
@@ -116,7 +127,7 @@ public class MessengerModel {
             );
         }
 
-        addChatToMemory(chat);
+        addChatToMemory(chat, true);
 
         return new CreateChatResponse(
                 CreateChatResponse.Result.SUCCESS,
@@ -145,7 +156,7 @@ public class MessengerModel {
             return CreateGroupResponse.error(CreateGroupResponse.Result.DATABASE_ERROR);
         }
 
-        addChatToMemory(groupChat);
+        addChatToMemory(groupChat, true);
 
         List<Integer> notificationMemberIds = new ArrayList<>();
         notificationMemberIds.add(currentUserId);
@@ -305,6 +316,24 @@ public class MessengerModel {
         chats.remove(chat);
         messageStore.remove(chat.getId());
         return true;
+    }
+
+    /** Owner action: ask the server to delete the whole group for every member. */
+    public void deleteGroupForAll(Chat chat) {
+        if (chat == null || !chat.isGroup() || webSocketClient == null) {
+            return;
+        }
+
+        webSocketClient.sendDeleteGroup(chat.getId(), Session.getCurrentUser().getId());
+    }
+
+    /** Remove a chat from memory only (the server already deleted it). */
+    public void removeChatLocally(int chatId) {
+        Chat chat = findChatById(chatId);
+        if (chat != null) {
+            chats.remove(chat);
+        }
+        messageStore.remove(chatId);
     }
 
     public Chat clearChat(Chat chat) {
@@ -682,7 +711,15 @@ public class MessengerModel {
         }
 
         Chat updatedChat = chat.withUnreadCount(0);
-        chats.set(index, updatedChat);
+
+        // Replacing the selected chat re-fires the ListView selection listener,
+        // which would re-enter openChat (with unread already 0). Suppress that.
+        reordering = true;
+        try {
+            chats.set(index, updatedChat);
+        } finally {
+            reordering = false;
+        }
 
         return updatedChat;
     }

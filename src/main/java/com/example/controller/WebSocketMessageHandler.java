@@ -64,6 +64,11 @@ public class WebSocketMessageHandler {
                 return;
             }
 
+            if (incoming.isGroupDeleted()) {
+                handleGroupDeletedMessage(incoming);
+                return;
+            }
+
             if (incoming.isHistory()) {
                 handleHistory(incoming);
                 return;
@@ -195,7 +200,9 @@ public class WebSocketMessageHandler {
 
         boolean isOwnMessage = senderId == Session.getCurrentUser().getId();
 
-        if (!messageForOpenedChat && !isOwnMessage) {
+        // When the chat was just (re)loaded from the server, its unreadCount already
+        // counts this message (it is is_read=false in the DB), so do not add again.
+        if (!messageForOpenedChat && !isOwnMessage && !messageLoadedByReload) {
             updatedIncomingChat =
                     controller.model.increaseUnreadCount(updatedIncomingChat);
         }
@@ -418,6 +425,18 @@ public class WebSocketMessageHandler {
         controller.refreshContactList();
     }
 
+    private void handleGroupDeletedMessage(IncomingMessage incoming) {
+        int chatId = incoming.getChatId();
+
+        controller.model.removeChatLocally(chatId);
+        controller.refreshContactList();
+
+        if (controller.selectedChat != null
+                && controller.selectedChat.getId() == chatId) {
+            controller.showEmptyChatState();
+        }
+    }
+
     // =================== Read receipts ===================
 
     private void handleMessagesRead(IncomingMessage incoming) {
@@ -499,7 +518,7 @@ public class WebSocketMessageHandler {
         if (controller.selectedChat != null
                 && controller.selectedChat.getId() == incoming.getChatId()) {
             controller.showMessagesForCurrentChat();
-            controller.scrollMessagesToBottom();
+            controller.scrollAfterHistoryLoad(incoming.getChatId());
         }
     }
 

@@ -165,7 +165,11 @@ public final class MessengerCells {
                             || !previous.getDate().equals(message.getDate());
                 }
 
-                boolean isMine = message.getSenderUsername().equals(
+                // A system message is never "mine", even when it is stored under the
+                // user who triggered it — otherwise it would get outgoing styling and
+                // read-receipt ticks.
+                boolean isMine = !message.isSystem()
+                        && message.getSenderUsername().equals(
                         Session.getCurrentUser().getUsername()
                 );
 

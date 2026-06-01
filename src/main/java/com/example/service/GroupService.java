@@ -56,6 +56,10 @@ public class GroupService {
         return "OWNER".equalsIgnoreCase(getCurrentUserGroupRole(chat));
     }
 
+    public boolean isGroupOwner(Chat chat) {
+        return "OWNER".equalsIgnoreCase(getCurrentUserGroupRole(chat));
+    }
+
     public boolean canCurrentOwnerLeaveGroup(Chat chat) {
         if (!"OWNER".equalsIgnoreCase(getCurrentUserGroupRole(chat))) {
             return true;

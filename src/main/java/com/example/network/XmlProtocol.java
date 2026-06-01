@@ -142,6 +142,15 @@ public final class XmlProtocol {
                 """.formatted(chatId, senderId, escape(msgId), escape(newText));
     }
 
+    public static String deleteGroup(int chatId, int senderId) {
+        return """
+                <message type="DELETE_GROUP">
+                    <chatId>%d</chatId>
+                    <senderId>%d</senderId>
+                </message>
+                """.formatted(chatId, senderId);
+    }
+
     public static String typing(
             int chatId,
             int senderId,
@@ -303,6 +312,7 @@ public final class XmlProtocol {
         public boolean isMessagesRead() { return "MESSAGES_READ".equalsIgnoreCase(type); }
         public boolean isMessageDeleted() { return "MESSAGE_DELETED".equalsIgnoreCase(type); }
         public boolean isMessageEdited() { return "MESSAGE_EDITED".equalsIgnoreCase(type); }
+        public boolean isGroupDeleted() { return "GROUP_DELETED".equalsIgnoreCase(type); }
     }
 
     public static IncomingMessage parse(String xml) {

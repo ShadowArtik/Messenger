@@ -91,6 +91,12 @@ public class ChatActionsHandler {
             return;
         }
 
+        // "Reset to profile name" only makes sense for private chats (revert the
+        // custom name back to the companion's display name); a group has no such name.
+        boolean showReset = !c.model.isGroupChat(c.selectedChat);
+        c.resetChatNameButton.setVisible(showReset);
+        c.resetChatNameButton.setManaged(showReset);
+
         MessengerOverlays.showRenameChat(
                 c.renameChatOverlay,
                 c.renameChatNameField,
@@ -195,7 +201,13 @@ public class ChatActionsHandler {
             return;
         }
 
-        c.model.deleteChat(c.selectedChat);
+        if (c.model.isGroupChat(c.selectedChat)) {
+            // Owner deletes the whole group for everyone; the chat is removed for all
+            // members (the owner included) when the GROUP_DELETED broadcast arrives.
+            c.model.deleteGroupForAll(c.selectedChat);
+        } else {
+            c.model.deleteChat(c.selectedChat);
+        }
 
         c.hideAllOverlays();
         c.showEmptyChatState();

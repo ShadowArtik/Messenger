@@ -136,6 +136,10 @@ public class WebSocketClient {
         sendMessage(XmlProtocol.editMessage(chatId, senderId, msgId, newText));
     }
 
+    public void sendDeleteGroup(int chatId, int senderId) {
+        sendMessage(XmlProtocol.deleteGroup(chatId, senderId));
+    }
+
     public void sendTypingMessage(
             int chatId,
             int senderId,
